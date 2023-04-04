@@ -1,1 +1,3 @@
 # accessibility-drt-optimizer
+
+The DRT optimizer that prioritize DRT requests based on their accessibility (i.e., alternative modes). This project is a colloaboration project between TU Berlin (VSP team) and University of Melbourne (Prof. Stephan Winter). 
