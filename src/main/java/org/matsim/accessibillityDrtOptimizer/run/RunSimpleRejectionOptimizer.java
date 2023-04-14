@@ -26,7 +26,7 @@ public class RunSimpleRejectionOptimizer implements MATSimAppCommand {
     private String outputDirectory;
 
     public static void main(String[] args) {
-        new RunDefaultOnlineStrategy().execute(args);
+        new RunSimpleRejectionOptimizer().execute(args);
     }
 
     @Override
@@ -35,6 +35,7 @@ public class RunSimpleRejectionOptimizer implements MATSimAppCommand {
         long startTime = System.currentTimeMillis();
 
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
+        config.transit().setUseTransit(true);
         MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
         config.controler().setOutputDirectory(outputDirectory);
 
