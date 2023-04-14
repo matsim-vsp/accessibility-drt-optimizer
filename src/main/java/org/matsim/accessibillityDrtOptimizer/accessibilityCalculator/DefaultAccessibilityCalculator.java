@@ -7,6 +7,7 @@ import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.contrib.drt.passenger.DrtRequest;
 import org.matsim.core.router.DefaultRoutingRequest;
+import org.matsim.core.router.LinkWrapperFacility;
 import org.matsim.pt.router.FakeFacility;
 
 import java.util.List;
@@ -24,7 +25,7 @@ public class DefaultAccessibilityCalculator implements AccessibilityCalculator {
         Coord toCoord = request.getToLink().getToNode().getCoord();
         List<? extends PlanElement> legs =
                 raptor.calcRoute(DefaultRoutingRequest.withoutAttributes
-                        (new FakeFacility(fromCoord), new FakeFacility(toCoord), request.getEarliestStartTime(), null));
+                        (new LinkWrapperFacility(request.getFromLink()), new LinkWrapperFacility(request.getToLink()), request.getEarliestStartTime(), null));
 
         if (legs.size() == 1) {
             // Direct walk is faster
