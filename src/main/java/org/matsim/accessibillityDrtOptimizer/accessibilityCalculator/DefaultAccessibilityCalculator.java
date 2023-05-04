@@ -8,16 +8,11 @@ import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.contrib.drt.passenger.DrtRequest;
 import org.matsim.core.router.DefaultRoutingRequest;
 import org.matsim.core.router.LinkWrapperFacility;
-import org.matsim.pt.router.FakeFacility;
+import org.matsim.core.utils.geometry.CoordUtils;
 
 import java.util.List;
 
-public class DefaultAccessibilityCalculator implements AccessibilityCalculator {
-    private final SwissRailRaptor raptor;
-
-    public DefaultAccessibilityCalculator(SwissRailRaptor raptor) {
-        this.raptor = raptor;
-    }
+public record DefaultAccessibilityCalculator(SwissRailRaptor raptor) implements AccessibilityCalculator {
 
     @Override
     public AlternativeModeData calculateAlternativeMode(DrtRequest request) {
@@ -26,6 +21,14 @@ public class DefaultAccessibilityCalculator implements AccessibilityCalculator {
         List<? extends PlanElement> legs =
                 raptor.calcRoute(DefaultRoutingRequest.withoutAttributes
                         (new LinkWrapperFacility(request.getFromLink()), new LinkWrapperFacility(request.getToLink()), request.getEarliestStartTime(), null));
+
+        if (legs == null) {
+            // No route can be found -> walk as alternative mode
+            double euclideanDistance = CoordUtils.calcEuclideanDistance(fromCoord, toCoord);
+            double walkTime = euclideanDistance * 1.3 / 0.8333333333333333;
+            // This is the default value from config file. Perhaps consider read it from config directly.
+            return new AlternativeModeData(0, walkTime, euclideanDistance, TransportMode.walk);
+        }
 
         if (legs.size() == 1) {
             // Direct walk is faster
