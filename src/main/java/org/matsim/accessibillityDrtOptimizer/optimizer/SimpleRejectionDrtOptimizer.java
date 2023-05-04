@@ -107,8 +107,9 @@ public class SimpleRejectionDrtOptimizer implements DrtOptimizer {
         AlternativeModeData alternativeModeData = accessibilityCalculator.calculateAlternativeMode(drtRequest);
         double directTravelTime = VrpPaths.calcAndCreatePath(drtRequest.getFromLink(), drtRequest.getToLink(), now, router, travelTime).getTravelTime();
         double maxTravelTime = drtCfg.maxTravelTimeAlpha * directTravelTime + drtCfg.maxTravelTimeBeta;
+        double discountFactor = 0.8;
 
-        if (considerRequest(maxTravelTime, alternativeModeData.totalTravelTime())) {
+        if (considerRequest(maxTravelTime * discountFactor, alternativeModeData.totalTravelTime())) {
             openRequests.put(drtRequest.getPassengerId(), drtRequest);
             Id<DvrpVehicle> selectedVehicleId = inserter.insert(drtRequest, fleetSchedules.vehicleToTimetableMap(), realTimeVehicleInfoMap);
             if (selectedVehicleId != null) {
