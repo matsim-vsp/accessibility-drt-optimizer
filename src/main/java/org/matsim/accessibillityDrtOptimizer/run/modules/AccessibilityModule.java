@@ -23,10 +23,12 @@ import org.matsim.core.router.util.TravelTime;
 public class AccessibilityModule extends AbstractDvrpModeQSimModule {
 
     private final DrtConfigGroup drtConfigGroup;
+    private final double threshold;
 
-    public AccessibilityModule(DrtConfigGroup drtConfigGroup) {
+    public AccessibilityModule(DrtConfigGroup drtConfigGroup, double threshold) {
         super(drtConfigGroup.mode);
         this.drtConfigGroup = drtConfigGroup;
+        this.threshold = threshold;
     }
 
     @Override
@@ -39,7 +41,7 @@ public class AccessibilityModule extends AbstractDvrpModeQSimModule {
                 getter.getModal(QSimScopeForkJoinPoolHolder.class).getPool(),
                 getter.getModal(VehicleEntry.EntryFactory.class),
                 getter.getModal(OnlineSolverBasicInsertionStrategy.class),
-                getter.getModal(AccessibilityCalculator.class))));
+                getter.getModal(AccessibilityCalculator.class), threshold)));
 
         bindModal(OnlineSolverBasicInsertionStrategy.class).toProvider(modalProvider(
                 getter -> new OnlineSolverBasicInsertionStrategy(getter.getModal(Network.class), drtConfigGroup,

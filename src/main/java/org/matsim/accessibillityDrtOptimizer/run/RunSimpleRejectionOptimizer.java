@@ -25,6 +25,10 @@ public class RunSimpleRejectionOptimizer implements MATSimAppCommand {
     @CommandLine.Option(names = "--output", description = "path to output directory", required = true)
     private String outputDirectory;
 
+    @CommandLine.Option(names = "--threshold", description = "reject DRT demand if alternative mode is below " +
+            "this ratio of the maximum travel time of this DRT request", defaultValue = "0.8")
+    private double threshold;
+
     public static void main(String[] args) {
         new RunSimpleRejectionOptimizer().execute(args);
     }
@@ -45,7 +49,7 @@ public class RunSimpleRejectionOptimizer implements MATSimAppCommand {
         // Add mode module
         for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
             controler.addOverridingModule(new LinearStopDurationModule(drtCfg));
-            controler.addOverridingQSimModule(new AccessibilityModule(drtCfg));
+            controler.addOverridingQSimModule(new AccessibilityModule(drtCfg, threshold));
         }
         controler.run();
 

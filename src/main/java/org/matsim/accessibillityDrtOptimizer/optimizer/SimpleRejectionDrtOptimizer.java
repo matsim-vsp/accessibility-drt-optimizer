@@ -70,12 +70,14 @@ public class SimpleRejectionDrtOptimizer implements DrtOptimizer {
 
     private FleetSchedules fleetSchedules;
     Map<Id<DvrpVehicle>, OnlineVehicleInfo> realTimeVehicleInfoMap = new LinkedHashMap<>();
+    private final double threshold;
 
     public SimpleRejectionDrtOptimizer(Network network, TravelTime travelTime, MobsimTimer timer, DrtTaskFactory taskFactory,
                                        EventsManager eventsManager, ScheduleTimingUpdater scheduleTimingUpdater,
                                        TravelDisutility travelDisutility, DrtConfigGroup drtCfg,
                                        Fleet fleet, ForkJoinPool forkJoinPool, VehicleEntry.EntryFactory vehicleEntryFactory,
-                                       OnlineSolverBasicInsertionStrategy inserter, AccessibilityCalculator accessibilityCalculator) {
+                                       OnlineSolverBasicInsertionStrategy inserter, AccessibilityCalculator accessibilityCalculator,
+                                       double threshold) {
         this.network = network;
         this.travelTime = travelTime;
         this.timer = timer;
@@ -91,6 +93,7 @@ public class SimpleRejectionDrtOptimizer implements DrtOptimizer {
         this.forkJoinPool = forkJoinPool;
         this.fleet = fleet;
         this.vehicleEntryFactory = vehicleEntryFactory;
+        this.threshold = threshold;
     }
 
     @Override
@@ -107,9 +110,8 @@ public class SimpleRejectionDrtOptimizer implements DrtOptimizer {
         AlternativeModeData alternativeModeData = accessibilityCalculator.calculateAlternativeMode(drtRequest);
         double directTravelTime = VrpPaths.calcAndCreatePath(drtRequest.getFromLink(), drtRequest.getToLink(), now, router, travelTime).getTravelTime();
         double maxTravelTime = drtCfg.maxTravelTimeAlpha * directTravelTime + drtCfg.maxTravelTimeBeta;
-        double discountFactor = 0.8;
 
-        if (considerRequest(maxTravelTime * discountFactor, alternativeModeData.totalTravelTime())) {
+        if (considerRequest(maxTravelTime * threshold, alternativeModeData.totalTravelTime())) {
             openRequests.put(drtRequest.getPassengerId(), drtRequest);
             Id<DvrpVehicle> selectedVehicleId = inserter.insert(drtRequest, fleetSchedules.vehicleToTimetableMap(), realTimeVehicleInfoMap);
             if (selectedVehicleId != null) {
