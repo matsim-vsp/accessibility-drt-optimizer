@@ -3,6 +3,7 @@ package org.matsim.accessibillityDrtOptimizer.accessibilityCalculator;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptor;
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.contrib.drt.passenger.DrtRequest;
@@ -16,18 +17,27 @@ public record DefaultAccessibilityCalculator(SwissRailRaptor raptor) implements 
 
     @Override
     public AlternativeModeData calculateAlternativeMode(DrtRequest request) {
-        Coord fromCoord = request.getFromLink().getToNode().getCoord();
-        Coord toCoord = request.getToLink().getToNode().getCoord();
+        Link fromLink = request.getFromLink();
+        Link toLink = request.getToLink();
+        double departureTime = request.getEarliestStartTime();
+        return calculateAlternativeMode(fromLink, toLink, departureTime);
+    }
+
+    public AlternativeModeData calculateAlternativeMode(Link fromLink, Link toLink, double departureTime) {
+        Coord fromCoord = fromLink.getToNode().getCoord();
+        Coord toCoord = toLink.getToNode().getCoord();
         List<? extends PlanElement> legs =
                 raptor.calcRoute(DefaultRoutingRequest.withoutAttributes
-                        (new LinkWrapperFacility(request.getFromLink()), new LinkWrapperFacility(request.getToLink()), request.getEarliestStartTime(), null));
+                        (new LinkWrapperFacility(fromLink), new LinkWrapperFacility(toLink), departureTime, null));
 
         if (legs == null) {
             // No route can be found -> walk as alternative mode
             double euclideanDistance = CoordUtils.calcEuclideanDistance(fromCoord, toCoord);
-            double walkTime = euclideanDistance * 1.3 / 0.8333333333333333;
-            // This is the default value from config file. Perhaps consider read it from config directly.
-            return new AlternativeModeData(0, walkTime, euclideanDistance, TransportMode.walk);
+            double walkingDistance = euclideanDistance * 1.3;
+            double walkTime = walkingDistance / 0.8333333333333333;
+            // This is the default value from config file.
+            // TODO Consider read it from config directly.
+            return new AlternativeModeData(0, walkTime, walkingDistance, TransportMode.walk);
         }
 
         if (legs.size() == 1) {
@@ -52,7 +62,8 @@ public record DefaultAccessibilityCalculator(SwissRailRaptor raptor) implements 
 
                 arrivalTimeOfPreviousLeg = leg.getDepartureTime().orElseThrow(RuntimeException::new) + leg.getTravelTime().orElseThrow(RuntimeException::new);
             }
-            return new AlternativeModeData(totalWaitingTime, arrivalTimeOfPreviousLeg - request.getEarliestStartTime(), totalWalkingDistance, TransportMode.pt);
+            return new AlternativeModeData(totalWaitingTime, arrivalTimeOfPreviousLeg - departureTime, totalWalkingDistance, TransportMode.pt);
         }
     }
+
 }
