@@ -20,6 +20,8 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.pt.transitSchedule.api.TransitSchedule;
+import org.matsim.pt.transitSchedule.api.TransitScheduleFactory;
+import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
@@ -29,7 +31,10 @@ import java.util.Arrays;
 import java.util.List;
 
 public class OverallPerformanceAnalysis implements MATSimAppCommand {
-    @CommandLine.Option(names = "--directory", description = "path to output directory", required = true)
+    @CommandLine.Option(names = "--config", description = "config file", required = true)
+    private String runConfig;
+
+    @CommandLine.Option(names = "--directory", description = "path to output directory. By default: use output directory in config file", defaultValue = "")
     private String directory;
 
     @CommandLine.Option(names = "--iterations", description = "number of last iteration", defaultValue = "0")
@@ -41,11 +46,14 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
-        String outputConfigString = ApplicationUtils.globFile(Path.of(directory), "*output_config.xml*").toString();
-        Config config = ConfigUtils.loadConfig(outputConfigString);
+        Config config = ConfigUtils.loadConfig(runConfig);
         Scenario scenario = ScenarioUtils.loadScenario(config);
         TransitSchedule schedule = scenario.getTransitSchedule();
         Network network = scenario.getNetwork();
+
+        if (directory.equals("")) {
+            directory = config.controler().getOutputDirectory();
+        }
 
         SwissRailRaptorData data = SwissRailRaptorData.create(schedule, null, RaptorUtils.createStaticConfig(config), network, null);
         SwissRailRaptor raptor = new SwissRailRaptor.Builder(data, config).build();
@@ -65,6 +73,10 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
         double totalRevenueDistance = 0;
 
         // Trip data
+        if (!Files.exists(Path.of(directory + "/accessibility-analysis/"))) {
+            Files.createDirectories(Path.of(directory + "/accessibility-analysis/"));
+        }
+
         List<String> titleRow = Arrays.asList("trip_id", "departure_time", "from_X", "from_Y", "to_X", "to_Y", "main_mode", "total_travel_time", "total_wait_time", "total_walk_distance");
         CSVPrinter tripsWriter = new CSVPrinter(new FileWriter(directory + "/accessibility-analysis/trips-data.tsv"), CSVFormat.TDF);
         tripsWriter.printRecord(titleRow);
@@ -125,22 +137,23 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
 
         String fleetDistance = "0";
         String fleetSize = "0";
-        try (CSVParser parser = new CSVParser(Files.newBufferedReader(servedDemandsFile),
+        try (CSVParser parser = new CSVParser(Files.newBufferedReader(distanceStatsFile),
                 CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
             for (CSVRecord record : parser.getRecords()) {
                 fleetSize = record.get("vehicles");
                 fleetDistance = record.get("totalDistance");
             }
         }
-
-        List<String> summaryTitleRow = Arrays.asList("num_of_trips", "fleet_size", "trips_served", "total_travel_time",
-                "total_waiting_time", "total_walking_distance", "revenue_distance", "fleet_distance");
+        List<String> summaryTitleRow = Arrays.asList("num_of_trips", "fleet_size", "trips_served", "service_rate", "total_travel_time",
+                "total_waiting_time", "total_walking_distance", "sum_direct_distance", "fleet_distance", "d_direct/d_total");
         CSVPrinter summaryWriter = new CSVPrinter(new FileWriter(directory + "/accessibility-analysis/summary.tsv"), CSVFormat.TDF);
-
         summaryWriter.printRecord(summaryTitleRow);
+
+        double serviceRate = (double) tripsServed / numPersons;
         List<String> outputRow = Arrays.asList(
-                Integer.toString(numPersons), fleetSize, Integer.toString(tripsServed), Double.toString(totalTravelTime),
-                Double.toString(totalWaitingTime), Double.toString(totalWalkingDistance), Double.toString(totalRevenueDistance), fleetDistance
+                Integer.toString(numPersons), fleetSize, Integer.toString(tripsServed), Double.toString(serviceRate), Double.toString(totalTravelTime),
+                Double.toString(totalWaitingTime), Double.toString(totalWalkingDistance), Double.toString(totalRevenueDistance), fleetDistance,
+                Double.toString(totalRevenueDistance / Double.parseDouble(fleetDistance))
         );
         summaryWriter.printRecord(outputRow);
         summaryWriter.close();
