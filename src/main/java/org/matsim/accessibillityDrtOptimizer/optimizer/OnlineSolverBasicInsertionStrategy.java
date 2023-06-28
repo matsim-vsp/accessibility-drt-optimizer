@@ -11,7 +11,6 @@ import org.matsim.contrib.drt.passenger.DrtRequest;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.contrib.dvrp.path.VrpPaths;
-import org.matsim.contrib.zone.skims.TravelTimeMatrix;
 import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
@@ -21,20 +20,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.matsim.contrib.dvrp.path.VrpPaths.FIRST_LINK_TT;
-
 public class OnlineSolverBasicInsertionStrategy {
     private final Network network;
     private final double stopDuration;
-    private final TravelTimeMatrix travelTimeMatrix;
     private final TravelTime travelTime;
     private final LeastCostPathCalculator router;
 
-    public OnlineSolverBasicInsertionStrategy(Network network, DrtConfigGroup drtConfigGroup, TravelTimeMatrix travelTimeMatrix,
-                                       TravelTime travelTime, TravelDisutility travelDisutility) {
+    public OnlineSolverBasicInsertionStrategy(Network network, DrtConfigGroup drtConfigGroup,
+                                              TravelTime travelTime, TravelDisutility travelDisutility) {
         this.network = network;
         this.stopDuration = drtConfigGroup.stopDuration;
-        this.travelTimeMatrix = travelTimeMatrix;
         this.travelTime = travelTime;
         this.router = new SpeedyALTFactory().createPathCalculator(network, travelDisutility, travelTime);
     }
@@ -63,9 +58,9 @@ public class OnlineSolverBasicInsertionStrategy {
 
             // 1 If original timetable is empty
             if (originalTimetable.isEmpty()) {
-                double timeToPickup = calculateVrpTravelTimeFromMatrix(currentLink, fromLink, divertableTime);
+                double timeToPickup = calculateVrpTravelTime(currentLink, fromLink, divertableTime);
                 double arrivalTimePickUp = divertableTime + timeToPickup;
-                double tripTravelTime = calculateVrpTravelTimeFromMatrix(fromLink, toLink, arrivalTimePickUp + stopDuration);
+                double tripTravelTime = calculateVrpTravelTime(fromLink, toLink, arrivalTimePickUp + stopDuration);
                 double arrivalTimeDropOff = arrivalTimePickUp + stopDuration + tripTravelTime;
                 double totalInsertionCost = timeToPickup + tripTravelTime;
                 if (arrivalTimePickUp > latestPickUpTime || arrivalTimePickUp > serviceEndTime) {
@@ -98,25 +93,25 @@ public class OnlineSolverBasicInsertionStrategy {
                 double pickupTime;
                 double delayCausedByPickupDetour;
                 if (i == 0) {
-                    detourA = calculateVrpTravelTimeFromMatrix(currentLink, fromLink, divertableTime);
+                    detourA = calculateVrpTravelTime(currentLink, fromLink, divertableTime);
                     pickupTime = divertableTime + detourA;
                     if (pickupTime > latestPickUpTime || pickupTime > serviceEndTime) {
                         noNeedToContinueWithThisVehicle = true;
                         break; // Vehicle cannot reach the pickup location in time. No need to continue with this vehicle
                     }
-                    detourB = calculateVrpTravelTimeFromMatrix(fromLink, linkOfStopAfterPickUpInsertion, pickupTime + stopDuration);
-                    delayCausedByPickupDetour = detourA + detourB - calculateVrpTravelTimeFromMatrix(currentLink, linkOfStopAfterPickUpInsertion, divertableTime);
+                    detourB = calculateVrpTravelTime(fromLink, linkOfStopAfterPickUpInsertion, pickupTime + stopDuration);
+                    delayCausedByPickupDetour = detourA + detourB - calculateVrpTravelTime(currentLink, linkOfStopAfterPickUpInsertion, divertableTime);
                 } else {
                     TimetableEntry stopBeforePickUpInsertion = originalTimetable.get(i - 1);
                     Link linkOfStopBeforePickUpInsertion = network.getLinks().get(stopBeforePickUpInsertion.getLinkId());
-                    detourA = calculateVrpTravelTimeFromMatrix(linkOfStopBeforePickUpInsertion, fromLink, stopBeforePickUpInsertion.getDepartureTime());
+                    detourA = calculateVrpTravelTime(linkOfStopBeforePickUpInsertion, fromLink, stopBeforePickUpInsertion.getDepartureTime());
                     pickupTime = stopBeforePickUpInsertion.getDepartureTime() + detourA;
                     if (pickupTime > latestPickUpTime || pickupTime > serviceEndTime) {
                         noNeedToContinueWithThisVehicle = true;
                         break; // Vehicle cannot reach the pickup location in time from this point. No need to continue on the timetable.
                     }
-                    detourB = calculateVrpTravelTimeFromMatrix(fromLink, linkOfStopAfterPickUpInsertion, pickupTime + stopDuration);
-                    delayCausedByPickupDetour = detourA + detourB - calculateVrpTravelTimeFromMatrix(linkOfStopBeforePickUpInsertion, linkOfStopAfterPickUpInsertion, stopBeforePickUpInsertion.getDepartureTime());
+                    detourB = calculateVrpTravelTime(fromLink, linkOfStopAfterPickUpInsertion, pickupTime + stopDuration);
+                    delayCausedByPickupDetour = detourA + detourB - calculateVrpTravelTime(linkOfStopBeforePickUpInsertion, linkOfStopAfterPickUpInsertion, stopBeforePickUpInsertion.getDepartureTime());
                 }
 
                 delayCausedByPickupDetour = Math.max(0, delayCausedByPickupDetour); // Due to the inaccuracy of the TT matrix, the delay may be smaller than 0, which is not meaningful
@@ -137,13 +132,13 @@ public class OnlineSolverBasicInsertionStrategy {
                             // Append drop off between j and j+1
                             TimetableEntry stopAfterDropOffInsertion = temporaryTimetable.get(j + 1);
                             Link linkOfStopAfterDropOffInsertion = network.getLinks().get(stopAfterDropOffInsertion.getLinkId());
-                            double detourC = calculateVrpTravelTimeFromMatrix(linkOfStopBeforeDropOffInsertion, toLink, stopBeforeDropOffInsertion.getDepartureTime());
+                            double detourC = calculateVrpTravelTime(linkOfStopBeforeDropOffInsertion, toLink, stopBeforeDropOffInsertion.getDepartureTime());
                             double dropOffTime = detourC + stopBeforeDropOffInsertion.getDepartureTime();
                             if (dropOffTime > latestArrivalTime || dropOffTime > serviceEndTime) {
                                 break; // No more drop-off feasible after this stop. No need to continue in the timetable
                             }
-                            double detourD = calculateVrpTravelTimeFromMatrix(toLink, linkOfStopAfterDropOffInsertion, dropOffTime + stopDuration);
-                            double delayCausedByDropOffDetour = detourC + detourD - calculateVrpTravelTimeFromMatrix(linkOfStopBeforeDropOffInsertion, linkOfStopAfterDropOffInsertion, stopBeforeDropOffInsertion.getDepartureTime());
+                            double detourD = calculateVrpTravelTime(toLink, linkOfStopAfterDropOffInsertion, dropOffTime + stopDuration);
+                            double delayCausedByDropOffDetour = detourC + detourD - calculateVrpTravelTime(linkOfStopBeforeDropOffInsertion, linkOfStopAfterDropOffInsertion, stopBeforeDropOffInsertion.getDepartureTime());
                             delayCausedByDropOffDetour = Math.max(0, delayCausedByDropOffDetour);
                             boolean isDropOffIsFeasible = isInsertionFeasible(temporaryTimetable, j + 1, delayCausedByDropOffDetour + stopDuration, serviceEndTime);
                             double totalInsertionCost = delayCausedByDropOffDetour + delayCausedByPickupDetour; // Currently, we assume cost = total extra drive time caused by the insertion
@@ -157,7 +152,7 @@ public class OnlineSolverBasicInsertionStrategy {
                             }
                         } else {
                             // Append drop off at the end
-                            double detourC = calculateVrpTravelTimeFromMatrix(linkOfStopBeforeDropOffInsertion, toLink, stopBeforeDropOffInsertion.getDepartureTime());
+                            double detourC = calculateVrpTravelTime(linkOfStopBeforeDropOffInsertion, toLink, stopBeforeDropOffInsertion.getDepartureTime());
                             double dropOffTime = detourC + stopBeforeDropOffInsertion.getDepartureTime();
                             double totalInsertionCost = detourC + delayCausedByPickupDetour;
                             boolean isDropOffFeasible = dropOffTime <= latestArrivalTime && dropOffTime <= serviceEndTime;
@@ -178,10 +173,10 @@ public class OnlineSolverBasicInsertionStrategy {
             if (!noNeedToContinueWithThisVehicle) {
                 TimetableEntry stopBeforePickUpInsertion = originalTimetable.get(originalTimetable.size() - 1);
                 Link linkOfStopBeforePickUpInsertion = network.getLinks().get(stopBeforePickUpInsertion.getLinkId());
-                double timeToPickUp = calculateVrpTravelTimeFromMatrix(linkOfStopBeforePickUpInsertion, fromLink, stopBeforePickUpInsertion.getDepartureTime());
+                double timeToPickUp = calculateVrpTravelTime(linkOfStopBeforePickUpInsertion, fromLink, stopBeforePickUpInsertion.getDepartureTime());
                 double pickupTime = stopBeforePickUpInsertion.getDepartureTime() + timeToPickUp;
                 if (pickupTime <= latestPickUpTime) {
-                    double tripTravelTime = calculateVrpTravelTimeFromMatrix(fromLink, toLink, pickupTime + stopDuration);
+                    double tripTravelTime = calculateVrpTravelTime(fromLink, toLink, pickupTime + stopDuration);
                     double dropOffTime = pickupTime + stopDuration + tripTravelTime;
                     double totalInsertionCost = timeToPickUp + tripTravelTime;
                     if (totalInsertionCost < bestInsertionCost) {
@@ -283,12 +278,11 @@ public class OnlineSolverBasicInsertionStrategy {
         return candidateTimetable;
     }
 
-    private double calculateVrpTravelTimeFromMatrix(Link fromLink, Link toLink, double departureTime) {
+    private double calculateVrpTravelTime(Link fromLink, Link toLink, double departureTime) {
         if (fromLink.getId().toString().equals(toLink.getId().toString())) {
             return 0;
         }
-        return FIRST_LINK_TT + travelTimeMatrix.getTravelTime(fromLink.getToNode(), toLink.getFromNode(), departureTime)
-                + VrpPaths.getLastLinkTT(travelTime, toLink, departureTime);
+        return VrpPaths.calcAndCreatePath(fromLink, toLink, departureTime, router, travelTime).getTravelTime();
     }
 
     private double calculateAccurateTravelTime(Link fromLink, Link toLink, double departureTime) {

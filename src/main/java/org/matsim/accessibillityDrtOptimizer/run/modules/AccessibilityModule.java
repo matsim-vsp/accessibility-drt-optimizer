@@ -33,8 +33,8 @@ public class AccessibilityModule extends AbstractDvrpModeQSimModule {
 
     @Override
     protected void configureQSim() {
-        addModalComponent(DrtOptimizer.class, this.modalProvider((getter) -> new SimpleRejectionDrtOptimizer(getter.getModal(Network.class), getter.getModal(TravelTime.class),
-                getter.get(MobsimTimer.class), getter.getModal(DrtTaskFactory.class),
+        addModalComponent(DrtOptimizer.class, this.modalProvider((getter) -> new SimpleRejectionDrtOptimizer(getter.getModal(Network.class),
+                getter.getModal(TravelTime.class), getter.get(MobsimTimer.class), getter.getModal(DrtTaskFactory.class),
                 getter.get(EventsManager.class), getter.getModal(ScheduleTimingUpdater.class),
                 getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)),
                 drtConfigGroup, getter.getModal(Fleet.class),
@@ -45,8 +45,7 @@ public class AccessibilityModule extends AbstractDvrpModeQSimModule {
 
         bindModal(OnlineSolverBasicInsertionStrategy.class).toProvider(modalProvider(
                 getter -> new OnlineSolverBasicInsertionStrategy(getter.getModal(Network.class), drtConfigGroup,
-                        getter.getModal(TravelTimeMatrix.class), getter.getModal(TravelTime.class),
-                        getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)))));
+                        getter.getModal(TravelTime.class), getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)))));
 
         bindModal(AccessibilityCalculator.class).toProvider(modalProvider(
                 getter -> new DefaultAccessibilityCalculator(getter.get(SwissRailRaptor.class))
