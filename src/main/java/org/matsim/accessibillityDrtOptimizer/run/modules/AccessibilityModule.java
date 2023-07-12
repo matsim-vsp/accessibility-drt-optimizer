@@ -3,14 +3,18 @@ package org.matsim.accessibillityDrtOptimizer.run.modules;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptor;
 import org.matsim.accessibillityDrtOptimizer.accessibilityCalculator.AccessibilityCalculator;
 import org.matsim.accessibillityDrtOptimizer.accessibilityCalculator.DefaultAccessibilityCalculator;
+import org.matsim.accessibillityDrtOptimizer.optimizer.DefaultDrtOptimizerWithRejection;
 import org.matsim.accessibillityDrtOptimizer.optimizer.OnlineSolverBasicInsertionStrategy;
 import org.matsim.accessibillityDrtOptimizer.optimizer.SimpleRejectionDrtOptimizer;
 import org.matsim.api.core.v01.network.Network;
-import org.matsim.contrib.drt.optimizer.DrtOptimizer;
-import org.matsim.contrib.drt.optimizer.QSimScopeForkJoinPoolHolder;
-import org.matsim.contrib.drt.optimizer.VehicleEntry;
+import org.matsim.contrib.drt.optimizer.*;
+import org.matsim.contrib.drt.optimizer.depot.DepotFinder;
+import org.matsim.contrib.drt.optimizer.insertion.UnplannedRequestInserter;
+import org.matsim.contrib.drt.optimizer.rebalancing.RebalancingStrategy;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.schedule.DrtTaskFactory;
+import org.matsim.contrib.drt.scheduler.DrtScheduleInquiry;
+import org.matsim.contrib.drt.scheduler.EmptyVehicleRelocator;
 import org.matsim.contrib.dvrp.fleet.Fleet;
 import org.matsim.contrib.dvrp.run.AbstractDvrpModeQSimModule;
 import org.matsim.contrib.dvrp.schedule.ScheduleTimingUpdater;
@@ -32,19 +36,27 @@ public class AccessibilityModule extends AbstractDvrpModeQSimModule {
 
     @Override
     protected void configureQSim() {
-        addModalComponent(DrtOptimizer.class, this.modalProvider((getter) -> new SimpleRejectionDrtOptimizer(getter.getModal(Network.class),
-                getter.getModal(TravelTime.class), getter.get(MobsimTimer.class), getter.getModal(DrtTaskFactory.class),
-                getter.get(EventsManager.class), getter.getModal(ScheduleTimingUpdater.class),
-                getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)),
-                drtConfigGroup, getter.getModal(Fleet.class),
-                getter.getModal(QSimScopeForkJoinPoolHolder.class).getPool(),
-                getter.getModal(VehicleEntry.EntryFactory.class),
-                getter.getModal(OnlineSolverBasicInsertionStrategy.class),
-                getter.getModal(AccessibilityCalculator.class), threshold)));
+//        addModalComponent(DrtOptimizer.class, this.modalProvider((getter) -> new SimpleRejectionDrtOptimizer(getter.getModal(Network.class),
+//                getter.getModal(TravelTime.class), getter.get(MobsimTimer.class), getter.getModal(DrtTaskFactory.class),
+//                getter.get(EventsManager.class), getter.getModal(ScheduleTimingUpdater.class),
+//                getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)),
+//                drtConfigGroup, getter.getModal(Fleet.class),
+//                getter.getModal(QSimScopeForkJoinPoolHolder.class).getPool(),
+//                getter.getModal(VehicleEntry.EntryFactory.class),
+//                getter.getModal(OnlineSolverBasicInsertionStrategy.class),
+//                getter.getModal(AccessibilityCalculator.class), threshold)));
 
-        bindModal(OnlineSolverBasicInsertionStrategy.class).toProvider(modalProvider(
-                getter -> new OnlineSolverBasicInsertionStrategy(getter.getModal(Network.class), drtConfigGroup,
-                        getter.getModal(TravelTime.class), getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)))));
+        addModalComponent(DrtOptimizer.class, modalProvider(
+                getter -> new DefaultDrtOptimizerWithRejection(drtConfigGroup, getter.getModal(Fleet.class), getter.get(MobsimTimer.class),
+                        getter.getModal(DepotFinder.class), getter.getModal(RebalancingStrategy.class),
+                        getter.getModal(DrtScheduleInquiry.class), getter.getModal(ScheduleTimingUpdater.class),
+                        getter.getModal(EmptyVehicleRelocator.class), getter.getModal(UnplannedRequestInserter.class),
+                        getter.getModal(DrtRequestInsertionRetryQueue.class), getter.getModal(AccessibilityCalculator.class),
+                        getter.getModal(Network.class), getter.getModal(TravelTime.class), threshold, getter.get(EventsManager.class))));
+
+//        bindModal(OnlineSolverBasicInsertionStrategy.class).toProvider(modalProvider(
+//                getter -> new OnlineSolverBasicInsertionStrategy(getter.getModal(Network.class), drtConfigGroup,
+//                        getter.getModal(TravelTime.class), getter.getModal(TravelDisutilityFactory.class).createTravelDisutility(getter.getModal(TravelTime.class)))));
 
         bindModal(AccessibilityCalculator.class).toProvider(modalProvider(
                 getter -> new DefaultAccessibilityCalculator(getter.get(SwissRailRaptor.class))
