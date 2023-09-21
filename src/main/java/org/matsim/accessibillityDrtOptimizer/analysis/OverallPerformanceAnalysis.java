@@ -248,7 +248,7 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
         }
 
         simpleFeatureBuilder.setName("drtZoneFeature");
-        // note: column names may not be longer than 10 characters. Otherwise the name is cut after the 10th character and the avalue is NULL in QGis
+        // note: column names may not be longer than 10 characters. Otherwise, the name is cut after the 10th character and the value is NULL in QGis
         simpleFeatureBuilder.add("the_geom", Polygon.class);
         simpleFeatureBuilder.add("zoneIid", String.class);
         simpleFeatureBuilder.add("centerX", Double.class);
