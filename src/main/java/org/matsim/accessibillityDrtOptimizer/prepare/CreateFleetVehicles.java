@@ -88,7 +88,7 @@ public class CreateFleetVehicles implements MATSimAppCommand {
     private String depotsPath;
 
     @CommandLine.Mixin
-    private ShpOptions shp = new ShpOptions(); // Optional input for service area (shape file)
+    private ShpOptions shp = new ShpOptions();
 
     private static final Random random = MatsimRandom.getRandom();
 

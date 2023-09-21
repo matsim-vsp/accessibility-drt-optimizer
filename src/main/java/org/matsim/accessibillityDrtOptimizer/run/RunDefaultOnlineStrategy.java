@@ -3,6 +3,7 @@ package org.matsim.accessibillityDrtOptimizer.run;
 import org.matsim.accessibillityDrtOptimizer.run.modules.LinearStopDurationModule;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
+import org.matsim.contrib.drt.analysis.zonal.DrtModeZonalSystemModule;
 import org.matsim.contrib.drt.extension.preplanned.optimizer.WaitForStopTask;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.DrtControlerCreator;
@@ -47,6 +48,7 @@ public class RunDefaultOnlineStrategy implements MATSimAppCommand {
         // Add mode module
         for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
             controler.addOverridingModule(new LinearStopDurationModule(drtCfg));
+            controler.addOverridingModule(new DvrpModule(new DrtModeZonalSystemModule(drtCfg)));
         }
         controler.run();
 
