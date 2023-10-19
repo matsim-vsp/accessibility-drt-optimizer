@@ -57,14 +57,17 @@ public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
 
     private final RequestQueue<DrtRequest> unplannedRequests;
 
-    private final double threshold;
+    private final double baseThreshold;
 
     private final EventsManager eventsManager;
+
+    private final TimeVaryingRejectionThreshold timeVaryingRejectionThreshold;
 
     public DefaultDrtOptimizerWithRejection(DrtConfigGroup drtCfg, Fleet fleet, MobsimTimer mobsimTimer, DepotFinder depotFinder,
                                             RebalancingStrategy rebalancingStrategy, DrtScheduleInquiry scheduleInquiry, ScheduleTimingUpdater scheduleTimingUpdater,
                                             EmptyVehicleRelocator relocator, UnplannedRequestInserter requestInserter, DrtRequestInsertionRetryQueue insertionRetryQueue,
-                                            AccessibilityCalculator accessibilityCalculator, Network network, TravelTime travelTime, double threshold, EventsManager eventsManager) {
+                                            AccessibilityCalculator accessibilityCalculator, Network network, TravelTime travelTime, double baseThreshold, EventsManager eventsManager,
+                                            TimeVaryingRejectionThreshold timeVaryingRejectionThreshold) {
         this.drtCfg = drtCfg;
         this.fleet = fleet;
         this.mobsimTimer = mobsimTimer;
@@ -81,8 +84,9 @@ public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
 
         rebalancingInterval = drtCfg.getRebalancingParams().map(rebalancingParams -> rebalancingParams.interval).orElse(null);
         unplannedRequests = RequestQueue.withLimitedAdvanceRequestPlanningHorizon(drtCfg.advanceRequestPlanningHorizon);
-        this.threshold = threshold;
+        this.baseThreshold = baseThreshold;
         this.eventsManager = eventsManager;
+        this.timeVaryingRejectionThreshold = timeVaryingRejectionThreshold;
     }
 
     @Override
@@ -133,6 +137,7 @@ public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
         AlternativeModeData alternativeModeData = accessibilityCalculator.calculateAlternativeMode(drtRequest);
         double directTravelTime = VrpPaths.calcAndCreatePath(drtRequest.getFromLink(), drtRequest.getToLink(), now, router, travelTime).getTravelTime();
         double maxTravelTime = drtCfg.maxTravelTimeAlpha * directTravelTime + drtCfg.maxTravelTimeBeta;
+        double threshold = timeVaryingRejectionThreshold.getThresholdFactor() * baseThreshold;
 
         if (alternativeModeData.totalTravelTime() < maxTravelTime * threshold) {
             // Reject this request directly

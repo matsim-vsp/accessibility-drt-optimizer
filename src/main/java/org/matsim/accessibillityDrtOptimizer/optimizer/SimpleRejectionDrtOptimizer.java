@@ -71,7 +71,6 @@ public class SimpleRejectionDrtOptimizer implements DrtOptimizer {
     private FleetSchedules fleetSchedules;
     Map<Id<DvrpVehicle>, OnlineVehicleInfo> realTimeVehicleInfoMap = new LinkedHashMap<>();
     private final double threshold;
-
     public SimpleRejectionDrtOptimizer(Network network, TravelTime travelTime, MobsimTimer timer, DrtTaskFactory taskFactory,
                                        EventsManager eventsManager, ScheduleTimingUpdater scheduleTimingUpdater,
                                        TravelDisutility travelDisutility, DrtConfigGroup drtCfg,
