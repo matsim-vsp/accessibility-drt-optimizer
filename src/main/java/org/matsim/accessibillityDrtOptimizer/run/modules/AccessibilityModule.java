@@ -43,10 +43,12 @@ public class AccessibilityModule extends AbstractDvrpModeQSimModule {
                         getter.getModal(EmptyVehicleRelocator.class), getter.getModal(UnplannedRequestInserter.class),
                         getter.getModal(DrtRequestInsertionRetryQueue.class), getter.getModal(AccessibilityCalculator.class),
                         getter.getModal(Network.class), getter.getModal(TravelTime.class), threshold, getter.get(EventsManager.class),
-                        getter.get(TimeVaryingRejectionThreshold.class))));
+                        getter.getModal(TimeVaryingRejectionThreshold.class))));
 
-        bindModal(TimeVaryingRejectionThreshold.class).toProvider(modalProvider(getter ->
-                new TimeVaryingRejectionThreshold(getter.getModal(Fleet.class), getter.getModal(DrtScheduleInquiry.class), timeVarying)));
+        bindModal(TimeVaryingRejectionThreshold.class).toProvider(modalProvider(
+                getter -> new TimeVaryingRejectionThreshold(getter.getModal(Fleet.class),
+                        getter.getModal(DrtScheduleInquiry.class), timeVarying)
+        ));
 
 
         bindModal(AccessibilityCalculator.class).toProvider(modalProvider(
