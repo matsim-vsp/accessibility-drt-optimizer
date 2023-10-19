@@ -1,10 +1,7 @@
 package org.matsim.accessibillityDrtOptimizer.optimizer;
 
 import org.matsim.contrib.drt.scheduler.DrtScheduleInquiry;
-import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.contrib.dvrp.fleet.Fleet;
-
-import java.util.stream.Stream;
 
 public class TimeVaryingRejectionThreshold {
     private final Fleet fleet;
