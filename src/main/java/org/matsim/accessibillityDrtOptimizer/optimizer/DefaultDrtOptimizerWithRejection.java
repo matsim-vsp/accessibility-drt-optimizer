@@ -2,8 +2,8 @@ package org.matsim.accessibillityDrtOptimizer.optimizer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.matsim.accessibillityDrtOptimizer.accessibilityCalculator.AccessibilityCalculator;
-import org.matsim.accessibillityDrtOptimizer.accessibilityCalculator.AlternativeModeData;
+import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AccessibilityCalculator;
+import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeData;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.drt.optimizer.DrtOptimizer;

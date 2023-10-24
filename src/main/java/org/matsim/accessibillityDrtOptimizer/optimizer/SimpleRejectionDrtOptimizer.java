@@ -1,8 +1,8 @@
 package org.matsim.accessibillityDrtOptimizer.optimizer;
 
 import com.google.common.base.Preconditions;
-import org.matsim.accessibillityDrtOptimizer.accessibilityCalculator.AccessibilityCalculator;
-import org.matsim.accessibillityDrtOptimizer.accessibilityCalculator.AlternativeModeData;
+import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AccessibilityCalculator;
+import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeData;
 import org.matsim.accessibillityDrtOptimizer.optimizer.basicStructures.FleetSchedules;
 import org.matsim.accessibillityDrtOptimizer.optimizer.basicStructures.OnlineVehicleInfo;
 import org.matsim.accessibillityDrtOptimizer.optimizer.basicStructures.TimetableEntry;

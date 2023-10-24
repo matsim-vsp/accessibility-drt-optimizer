@@ -1,4 +1,4 @@
-package org.matsim.accessibillityDrtOptimizer.accessibilityCalculator;
+package org.matsim.accessibillityDrtOptimizer.accessibility_calculator;
 
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptor;
 import org.matsim.api.core.v01.Coord;

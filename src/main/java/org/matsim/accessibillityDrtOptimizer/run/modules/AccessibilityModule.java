@@ -1,8 +1,8 @@
 package org.matsim.accessibillityDrtOptimizer.run.modules;
 
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptor;
-import org.matsim.accessibillityDrtOptimizer.accessibilityCalculator.AccessibilityCalculator;
-import org.matsim.accessibillityDrtOptimizer.accessibilityCalculator.DefaultAccessibilityCalculator;
+import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AccessibilityCalculator;
+import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.DefaultAccessibilityCalculator;
 import org.matsim.accessibillityDrtOptimizer.optimizer.DefaultDrtOptimizerWithRejection;
 import org.matsim.accessibillityDrtOptimizer.optimizer.TimeVaryingRejectionThreshold;
 import org.matsim.api.core.v01.network.Network;
