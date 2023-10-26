@@ -64,7 +64,6 @@ public class RunFixedThresholdExperiments implements MATSimAppCommand {
 
             // Add mode module
             for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
-                controler.addOverridingModule(new LinearStopDurationModule(drtCfg));
                 controler.addOverridingModule(new DvrpModule(new DrtModeZonalSystemModule(drtCfg)));
             }
             controler.run();
