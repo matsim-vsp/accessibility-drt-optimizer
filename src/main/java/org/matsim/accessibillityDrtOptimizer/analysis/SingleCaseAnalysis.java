@@ -53,7 +53,7 @@ import static org.matsim.contrib.drt.analysis.zonal.DrtGridUtils.createGridFromN
 import static org.matsim.contrib.drt.analysis.zonal.DrtZonalSystem.createFromPreparedGeometries;
 import static org.matsim.utils.gis.shp2matsim.ShpGeometryUtils.loadPreparedGeometries;
 
-public class OverallPerformanceAnalysis implements MATSimAppCommand {
+public class SingleCaseAnalysis implements MATSimAppCommand {
     @CommandLine.Option(names = "--config", description = "config file", required = true)
     private String runConfig;
 
@@ -69,10 +69,10 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
     @CommandLine.Option(names = "--cell-size", description = "cell size for the analysis", defaultValue = "500")
     private double cellSize;
 
-    private static final Logger log = LogManager.getLogger(OverallPerformanceAnalysis.class);
+    private static final Logger log = LogManager.getLogger(SingleCaseAnalysis.class);
 
     public static void main(String[] args) {
-        new OverallPerformanceAnalysis().execute(args);
+        new SingleCaseAnalysis().execute(args);
     }
 
     @Override
@@ -118,7 +118,6 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
         int numPersons = 0;
         int tripsServed = 0;
         double sumTotalTravelTime = 0;
-        double totalWaitingTime = 0;
         double totalWalkingDistance = 0;
         double totalRevenueDistance = 0;
 
@@ -127,7 +126,7 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
             Files.createDirectories(Path.of(directory + "/accessibility-analysis/"));
         }
 
-        List<String> titleRow = Arrays.asList("trip_id", "departure_time", "from_X", "from_Y", "to_X", "to_Y", "main_mode", "total_travel_time", "total_wait_time", "total_walk_distance", "direct_travel_time", "delay_ratio");
+        List<String> titleRow = Arrays.asList("trip_id", "departure_time", "from_X", "from_Y", "to_X", "to_Y", "main_mode", "total_travel_time", "total_walk_distance", "direct_travel_time", "delay_ratio");
         CSVPrinter tripsWriter = new CSVPrinter(new FileWriter(directory + "/accessibility-analysis/trips-data.tsv"), CSVFormat.TDF);
         tripsWriter.printRecord(titleRow);
 
@@ -158,7 +157,6 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
                         Double.toString(toLink.getToNode().getCoord().getX()),
                         Double.toString(toLink.getToNode().getCoord().getY()),
                         alternativeModeData.mode(), Double.toString(alternativeModeData.totalTravelTime()),
-                        Double.toString(alternativeModeData.waitingTime()),
                         Double.toString(alternativeModeData.TotalWalkingDistance()),
                         Double.toString(directCarTravelTime),
                         Double.toString(delay)
@@ -171,7 +169,6 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
                 CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
             for (CSVRecord record : parser.getRecords()) {
                 double departureTime = Double.parseDouble(record.get("departureTime"));
-                double waitTime = Double.parseDouble(record.get("waitTime"));
                 double arrivalTime = Double.parseDouble(record.get("arrivalTime"));
                 double journeyTime = arrivalTime - departureTime;
                 Link fromLink = network.getLinks().get(Id.createLinkId(record.get("fromLinkId")));
@@ -188,7 +185,6 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
 //                statsMap.computeIfAbsent(Objects.requireNonNull(zonalSystem.getZoneForLinkId(fromLink.getId())).getId(), l -> new ArrayList<>()).add(delay);
 
                 sumTotalTravelTime += journeyTime;
-                totalWaitingTime += waitTime;
                 totalRevenueDistance += Double.parseDouble(record.get("directTravelDistance_m"));
                 numPersons++;
                 tripsServed++;
@@ -199,7 +195,6 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
                         record.get("toX"), record.get("toY"),
                         TransportMode.drt,
                         Double.toString(journeyTime),
-                        Double.toString(waitTime),
                         "0",
                         Double.toString(directCarTravelTime),
                         Double.toString(delay)
@@ -219,14 +214,14 @@ public class OverallPerformanceAnalysis implements MATSimAppCommand {
             }
         }
         List<String> summaryTitleRow = Arrays.asList("num_of_trips", "fleet_size", "trips_served", "service_rate", "total_travel_time",
-                "total_waiting_time", "total_walking_distance", "sum_direct_distance", "fleet_distance", "d_direct/d_total");
+                "total_walking_distance", "sum_direct_distance", "fleet_distance", "d_direct/d_total");
         CSVPrinter summaryWriter = new CSVPrinter(new FileWriter(directory + "/accessibility-analysis/summary.tsv"), CSVFormat.TDF);
         summaryWriter.printRecord(summaryTitleRow);
 
         double serviceRate = (double) tripsServed / numPersons;
         List<String> outputRow = Arrays.asList(
                 Integer.toString(numPersons), fleetSize, Integer.toString(tripsServed), Double.toString(serviceRate), Double.toString(sumTotalTravelTime),
-                Double.toString(totalWaitingTime), Double.toString(totalWalkingDistance), Double.toString(totalRevenueDistance), fleetDistance,
+                Double.toString(totalWalkingDistance), Double.toString(totalRevenueDistance), fleetDistance,
                 Double.toString(totalRevenueDistance / Double.parseDouble(fleetDistance))
         );
         summaryWriter.printRecord(outputRow);
