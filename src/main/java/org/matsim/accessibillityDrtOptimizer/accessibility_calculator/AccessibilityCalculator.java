@@ -1,4 +1,4 @@
-package org.matsim.accessibillityDrtOptimizer.accessibilityCalculator;
+package org.matsim.accessibillityDrtOptimizer.accessibility_calculator;
 
 import org.matsim.contrib.drt.passenger.DrtRequest;
 
