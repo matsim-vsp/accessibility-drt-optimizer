@@ -13,6 +13,7 @@ import org.matsim.core.utils.geometry.CoordUtils;
 
 import java.util.List;
 
+@Deprecated
 public record DefaultAccessibilityCalculator(SwissRailRaptor raptor) implements AccessibilityCalculator {
 
     @Override

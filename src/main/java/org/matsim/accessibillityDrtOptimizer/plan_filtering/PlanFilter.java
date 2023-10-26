@@ -6,7 +6,8 @@ import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorData;
 import com.google.common.base.Preconditions;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
-import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeData;
+import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeCalculator;
+import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeTripData;
 import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.DefaultAccessibilityCalculator;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
@@ -16,17 +17,13 @@ import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
-import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
-import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.population.io.PopulationWriter;
 import org.matsim.core.router.TripStructureUtils;
-import org.matsim.core.router.speedy.SpeedyALTFactory;
-import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
@@ -35,7 +32,6 @@ import picocli.CommandLine;
 
 import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class PlanFilter implements MATSimAppCommand {
@@ -67,7 +63,7 @@ public class PlanFilter implements MATSimAppCommand {
 
         TravelTime travelTime = new QSimFreeSpeedTravelTime(1);
         TravelDisutility travelDisutility = new TimeAsTravelDisutility(travelTime);
-        LeastCostPathCalculator router = new SpeedyALTFactory().createPathCalculator(network, travelDisutility, travelTime);
+        AlternativeModeCalculator alternativeModeCalculator = new AlternativeModeCalculator(raptor, network, travelTime, travelDisutility);
 
         List<Person> personList02 = new ArrayList<>();
         List<Person> personList04 = new ArrayList<>();
@@ -76,9 +72,8 @@ public class PlanFilter implements MATSimAppCommand {
         List<Person> personList10 = new ArrayList<>();
 
         String alternativeModeDataOutput = outputDirectory + "/alternative-mode-data.csv";
-        List<String> titleRow = Arrays.asList("id", "departure_time", "from_X", "from_Y", "to_X", "to_Y", "main_mode", "total_travel_time", "total_walk_distance", "direct_travel_time", "delay_ratio");
         CSVPrinter tripsWriter = new CSVPrinter(new FileWriter(alternativeModeDataOutput), CSVFormat.TDF);
-        tripsWriter.printRecord(titleRow);
+        tripsWriter.printRecord(AlternativeModeTripData.ALTERNATIVE_TRIP_DATA_TITLE_ROW);
 
         for (Person person : inputPlans.getPersons().values()) {
             List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
@@ -87,49 +82,34 @@ public class PlanFilter implements MATSimAppCommand {
             Link fromLink = network.getLinks().get(trip.getOriginActivity().getLinkId());
             Link toLink = network.getLinks().get(trip.getDestinationActivity().getLinkId());
             double departureTime = trip.getOriginActivity().getEndTime().orElseThrow(RuntimeException::new);
-            double directTravelTime = VrpPaths.calcAndCreatePath(fromLink, toLink, departureTime, router, travelTime).getTravelTime();
 
-            double upperBound = drtConfigGroup.maxTravelTimeAlpha * directTravelTime + drtConfigGroup.maxTravelTimeBeta;
-            AlternativeModeData alternativeModeData = accessibilityCalculator.calculateAlternativeMode(fromLink, toLink, departureTime);
-            double alternativeTravelTime = alternativeModeData.totalTravelTime();
+            AlternativeModeTripData alternativeModeTripData = alternativeModeCalculator.calculateAlternativeTripData(person.getId().toString(), fromLink, toLink, departureTime);
 
-            if (alternativeTravelTime > 0.2 * upperBound){
+            double upperBound = drtConfigGroup.maxTravelTimeAlpha * alternativeModeTripData.directCarTravelTime() + drtConfigGroup.maxTravelTimeBeta;
+            double alternativeTravelTime = alternativeModeTripData.actualTotalTravelTime();
+            if (alternativeTravelTime > 0.2 * upperBound) {
                 personList02.add(person);
             }
 
-            if (alternativeTravelTime > 0.4 * upperBound){
+            if (alternativeTravelTime > 0.4 * upperBound) {
                 personList04.add(person);
             }
 
-            if (alternativeTravelTime > 0.6 * upperBound){
+            if (alternativeTravelTime > 0.6 * upperBound) {
                 personList06.add(person);
             }
 
-            if (alternativeTravelTime > 0.8 * upperBound){
+            if (alternativeTravelTime > 0.8 * upperBound) {
                 personList08.add(person);
             }
 
-            if (alternativeTravelTime > upperBound){
+            if (alternativeTravelTime > upperBound) {
                 personList10.add(person);
             }
 
             // print alternative mode data
-            List<String> outputRow = Arrays.asList(
-                    person.getId().toString(),
-                    Double.toString(departureTime),
-                    Double.toString(fromLink.getToNode().getCoord().getX()),
-                    Double.toString(fromLink.getToNode().getCoord().getY()),
-                    Double.toString(toLink.getToNode().getCoord().getX()),
-                    Double.toString(toLink.getToNode().getCoord().getY()),
-                    alternativeModeData.mode(),
-                    Double.toString(alternativeModeData.totalTravelTime()),
-                    Double.toString(alternativeModeData.TotalWalkingDistance()),
-                    Double.toString(directTravelTime),
-                    Double.toString(alternativeTravelTime / directTravelTime - 1)
-            );
-            tripsWriter.printRecord(outputRow);
+            alternativeModeTripData.printData(tripsWriter);
         }
-
         tripsWriter.close();
 
         Population population02 = PopulationUtils.createPopulation(ConfigUtils.createConfig());

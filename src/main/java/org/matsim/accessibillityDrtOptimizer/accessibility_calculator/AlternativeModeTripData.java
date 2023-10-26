@@ -22,7 +22,7 @@ public record AlternativeModeTripData(String id, double departureTime, Coord fro
     public static final String MODE = "mode";
     public static final String TOTAL_WALK_DISTANCE = "total_walk_distance";
 
-    public static final List<String> titleRow = Arrays.asList(
+    public static final List<String> ALTERNATIVE_TRIP_DATA_TITLE_ROW = Arrays.asList(
             ID, DEPARTURE_TIME, FROM_X, FROM_Y, TO_X, TO_Y,
             DIRECT_CAR_TRAVEL_TIME, ACTUAL_TOTAL_TRAVEL_TIME, MODE, TOTAL_WALK_DISTANCE
     );

@@ -40,6 +40,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeTripData.*;
+
 public class RunDynamicThresholdExperiments implements MATSimAppCommand {
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
     private String configPath;
@@ -98,9 +100,9 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
                 CSVFormat.TDF.withFirstRecordAsHeader())) {
             for (CSVRecord record : parser.getRecords()) {
                 String personId = record.get("id");
-                double departureTime = Double.parseDouble(record.get("departure_time"));
-                double alternativeTravelTime = Double.parseDouble(record.get("total_travel_time"));
-                double directTravelTime = Double.parseDouble(record.get("direct_travel_time"));
+                double departureTime = Double.parseDouble(record.get(DEPARTURE_TIME));
+                double alternativeTravelTime = Double.parseDouble(record.get(ACTUAL_TOTAL_TRAVEL_TIME));
+                double directTravelTime = Double.parseDouble(record.get(DIRECT_CAR_TRAVEL_TIME));
                 double ratio = alternativeTravelTime / (tempDrtConfigGroup.maxTravelTimeAlpha * directTravelTime + tempDrtConfigGroup.maxTravelTimeBeta);
                 alternativeModeData.put(personId, new Tuple<>(departureTime, ratio));
             }

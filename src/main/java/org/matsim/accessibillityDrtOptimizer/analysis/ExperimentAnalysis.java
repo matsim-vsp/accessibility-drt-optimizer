@@ -17,6 +17,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeTripData.ACTUAL_TOTAL_TRAVEL_TIME;
+import static org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeTripData.ID;
+
 public class ExperimentAnalysis implements MATSimAppCommand {
     @CommandLine.Option(names = "--output", description = "output root directory", required = true)
     private String outputDirectory;
@@ -45,11 +48,14 @@ public class ExperimentAnalysis implements MATSimAppCommand {
 
     public static void performAnalysis(String outputDirectory, int fleetFrom, int fleetMax, int fleetInterval, Path alternativeDataPath) throws IOException {
         Map<String, Double> backupTravelTimeMap = new HashMap<>();
+//        Map<String, Double> directTravelTimeMap = new HashMap<>();
+
         try (CSVParser parser = new CSVParser(Files.newBufferedReader(alternativeDataPath),
                 CSVFormat.TDF.withFirstRecordAsHeader())) {
             for (CSVRecord record : parser.getRecords()) {
-                String personId = record.get("id");
-                backupTravelTimeMap.put(personId, Double.parseDouble(record.get("total_travel_time")));
+                String personId = record.get(ID);
+                backupTravelTimeMap.put(personId, Double.parseDouble(record.get(ACTUAL_TOTAL_TRAVEL_TIME)));
+//                directTravelTimeMap.put(personId, Double.parseDouble(record.get(DIRECT_CAR_TRAVEL_TIME)));
             }
         }
         int totalTrips = backupTravelTimeMap.size();
@@ -73,7 +79,7 @@ public class ExperimentAnalysis implements MATSimAppCommand {
                     double departureTime = Double.parseDouble(record.get("departureTime"));
                     double latestArrivalTime = Double.parseDouble(record.get("latestArrivalTime"));
                     if (arrivalTime > latestArrivalTime + 60) {
-                        //TODO the 60 here is hard coded (i.e., stop duration)
+                        //TODO read from DRT config
                         lateArrivals++;
                     }
 

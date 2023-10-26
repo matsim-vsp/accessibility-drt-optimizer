@@ -19,6 +19,7 @@ import picocli.CommandLine;
 
 import java.nio.file.Path;
 
+@Deprecated
 public class RunSimpleRejectionOptimizer implements MATSimAppCommand {
     @CommandLine.Option(names = "--config", description = "path to config file", required = true)
     private String configPath;
