@@ -131,9 +131,10 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
                 new DrtVehicleStoppingTaskWriter(Path.of(outputFolder)).
                         addingCustomizedTaskToAnalyze(WaitForStopTask.TYPE).run(WaitForStopTask.TYPE);
 
-                // Analyze and update temp population
+                // AnalyzeKPI
                 // TODO
-                
+
+                // Update tem population
                 if (i != outerIterations - 1) {
                     // Process population file based on output
                     Population tempPopulation = processPlan(rawPopulation, outputFolder);
