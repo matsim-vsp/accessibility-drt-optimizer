@@ -7,10 +7,9 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.matsim.accessibillityDrtOptimizer.run.modules.LinearStopDurationModule;
+import org.matsim.accessibillityDrtOptimizer.analysis.PerformanceAnalysis;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
-import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.api.core.v01.population.PopulationWriter;
 import org.matsim.application.MATSimAppCommand;
@@ -56,7 +55,7 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
     private int outerIterations;
 
     @CommandLine.Option(names = "--learning-rate", description = "learning rate with exp discount", defaultValue = "0.5")
-    private int learningRate;
+    private double learningRate;
 
     @CommandLine.Option(names = "--time-bin-size", description = "time bin size for the travel time analysis", defaultValue = "900")
     private int timeBinSize;
@@ -70,6 +69,10 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
 
     private final Map<String, Tuple<Double, Double>> alternativeModeData = new HashMap<>();
     // Tuple: departure time, trip length ratio (against max drt travel time)
+
+    public static void main(String[] args) {
+        new RunDynamicThresholdExperiments().execute(args);
+    }
 
     @Override
     public Integer call() throws Exception {
@@ -108,10 +111,18 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
             }
         }
 
+        PerformanceAnalysis overallAnalysis = new PerformanceAnalysis(tempDrtConfigGroup, alternativeDataPath.toString(), outputRootDirectory + "/overall-summary.tsv");
+        overallAnalysis.writeTitle();
+
         for (int fleetSize = fleetFrom; fleetSize <= fleetMax; fleetSize += fleetInterval) {
+            String fleetSizeFolder = outputRootDirectory + "/" + fleetSize + "-veh";
+            PerformanceAnalysis singleCaseAnalysis = new PerformanceAnalysis
+                    (tempDrtConfigGroup, alternativeDataPath.toString(), fleetSizeFolder + "/iterations-summary.tsv");
+            singleCaseAnalysis.writeTitle();
+
             // Start outer iterations
-            for (int i = 0; i < outerIterations; i++) {
-                String outputFolder = outputRootDirectory + "/" + fleetSize + "-veh/iter-" + i;
+            for (int i = 0; i <= outerIterations; i++) {
+                String outputFolder = fleetSizeFolder + "/iter-" + i;
 
                 Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
                 config.controler().setOutputDirectory(outputFolder);
@@ -133,20 +144,21 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
                 new DrtVehicleStoppingTaskWriter(Path.of(outputFolder)).
                         addingCustomizedTaskToAnalyze(WaitForStopTask.TYPE).run(WaitForStopTask.TYPE);
 
-                // AnalyzeKPI
-                // TODO
+                // Analyze KPI
+                singleCaseAnalysis.writeDataEntry(outputFolder, fleetSize);
 
                 // Update tem population
-                if (i != outerIterations - 1) {
+                if (i != outerIterations) {
                     // Process population file based on output
                     Population tempPopulation = processPlan(rawPopulation, outputFolder);
                     // Overwrite old temp population with new temp population
                     new PopulationWriter(tempPopulation).write(temporaryPopulationPath);
+                } else {
+                    // Write overall analysis
+                    overallAnalysis.writeDataEntry(outputFolder, fleetSize);
                 }
             }
         }
-
-        // Perform overall analysis
 
         return 0;
     }
@@ -179,6 +191,7 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
                     tripLengthRatiosPerTimeBinMap.get(timeBin).stream().mapToDouble(d -> d).average().orElseThrow();
             double previousValue = thresholdMap.get(timeBin);
             double updatedValue = learningRate * averageTripLengthRatio + (1 - learningRate) * previousValue;
+            updatedValue = Math.min(1.0, updatedValue);
             thresholdMap.put(timeBin, updatedValue);
         }
 

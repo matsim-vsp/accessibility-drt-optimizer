@@ -19,12 +19,16 @@ import static org.matsim.accessibillityDrtOptimizer.accessibility_calculator.Alt
 
 public class PerformanceAnalysis {
     public static final String FLEET_SIZE = "fleet_size";
-    public static final String NUM_OF_LATE_ARRIVALS = "num_late_arrivals";
+    public static final String TOTAL_TRIPS = "total_trips";
+    public static final String SATISFACTORY_TRIPS = "satisfactory_trips";
+    public static final String SATISFACTORY_RATE = "satisfactory_rate";
     public static final String SYSTEM_TOTAL_TRAVEL_TIME = "system_total_travel_time";
     public static final String NUM_DRT_TRIPS_SERVED = "num_drt_trips_served";
-    public static final String SERVICE_RATE = "service_rate";
+    public static final String DRT_TRIPS_SHARE = "drt_trips_share";
+    public static final String DRT_SATISFACTORY_RATE = "drt_satisfactory_rate";
     public static final List<String> KPI_TITLE_ROW =
-            Arrays.asList(FLEET_SIZE, NUM_OF_LATE_ARRIVALS, SYSTEM_TOTAL_TRAVEL_TIME, NUM_DRT_TRIPS_SERVED, SERVICE_RATE);
+            Arrays.asList(FLEET_SIZE, TOTAL_TRIPS, SATISFACTORY_TRIPS, SATISFACTORY_RATE,
+                    SYSTEM_TOTAL_TRAVEL_TIME, NUM_DRT_TRIPS_SERVED, DRT_TRIPS_SHARE, DRT_SATISFACTORY_RATE);
 
     private final DrtConfigGroup drtConfigGroup;
     private final String outputSummaryPath;
@@ -36,6 +40,12 @@ public class PerformanceAnalysis {
     public PerformanceAnalysis(DrtConfigGroup drtConfigGroup, String alternativeModeDataPath, String outputSummaryPath) throws IOException {
         this.drtConfigGroup = drtConfigGroup;
         this.outputSummaryPath = outputSummaryPath;
+
+        Path parentPath = Path.of(outputSummaryPath).getParent();
+        while (!Files.exists(parentPath)) {
+            Files.createDirectories(parentPath);
+            parentPath = parentPath.getParent();
+        }
 
         try (CSVParser parser = new CSVParser(Files.newBufferedReader(Path.of(alternativeModeDataPath)),
                 CSVFormat.TDF.withFirstRecordAsHeader())) {
@@ -59,41 +69,49 @@ public class PerformanceAnalysis {
 
         Map<String, Double> systemTotalTravelTimeMap = new HashMap<>(alternativeModeTravelTimeMap);
 
-        int requestsServed = 0;
+        int numDrtTrips = 0;
+        int satisfactoryDrtTrips = 0;
         try (CSVParser parser = new CSVParser(Files.newBufferedReader(Path.of(outputFolder + "/output_drt_legs_drt.csv")),
                 CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
             for (CSVRecord record : parser.getRecords()) {
                 String personId = record.get("personId");
                 double arrivalTime = Double.parseDouble(record.get("arrivalTime"));
+                double latestArrivalTime = Double.parseDouble(record.get("latestArrivalTime"));
                 double departureTime = Double.parseDouble(record.get("departureTime"));
                 double totalTravelTime = arrivalTime - departureTime;
                 // override with DRT data
                 systemTotalTravelTimeMap.put(personId, totalTravelTime);
-                requestsServed++;
+                numDrtTrips++;
+                if (arrivalTime <= latestArrivalTime) {
+                    satisfactoryDrtTrips++;
+                }
             }
         }
 
-        int lateArrivals = 0;
+        int satisfactoryTrips = 0;
         for (String personId : systemTotalTravelTimeMap.keySet()) {
             double directTravelTime = tripDirectTravelTimeMap.get(personId);
             double maxTravelTime = drtConfigGroup.maxTravelTimeAlpha * directTravelTime + drtConfigGroup.maxTravelTimeBeta;
             double actualTravelTime = systemTotalTravelTimeMap.get(personId);
-            if (actualTravelTime > maxTravelTime) {
-                lateArrivals++;
+            if (actualTravelTime <= maxTravelTime) {
+                satisfactoryTrips++;
             }
         }
 
-        double lateArrivalsRate = (double) lateArrivals / numOfTotalTrips;
+        double satisfactoryRate = (double) satisfactoryTrips / numOfTotalTrips;
         double systemTotalTravelTime = systemTotalTravelTimeMap.values().stream().mapToDouble(t -> t).sum();
-        double serviceRate = (double) requestsServed / numOfTotalTrips;
+        double drtTripsShare = (double) numDrtTrips / numOfTotalTrips;
+        double drtSatisfactoryRate = (double) satisfactoryDrtTrips / numDrtTrips;
 
         List<String> outputRow = Arrays.asList(
                 Integer.toString(fleetSize),
-                Integer.toString(lateArrivals),
-                Double.toString(lateArrivalsRate),
+                Integer.toString(numOfTotalTrips),
+                Integer.toString(satisfactoryTrips),
+                Double.toString(satisfactoryRate),
                 Double.toString(systemTotalTravelTime),
-                Integer.toString(requestsServed),
-                Double.toString(serviceRate)
+                Integer.toString(numDrtTrips),
+                Double.toString(drtTripsShare),
+                Double.toString(drtSatisfactoryRate)
         );
         summaryWriter.printRecord(outputRow);
         summaryWriter.close();
