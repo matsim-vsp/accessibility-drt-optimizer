@@ -2,7 +2,6 @@ package org.matsim.accessibillityDrtOptimizer.run;
 
 import com.google.common.base.Preconditions;
 import org.matsim.accessibillityDrtOptimizer.analysis.ExperimentAnalysis;
-import org.matsim.accessibillityDrtOptimizer.run.modules.LinearStopDurationModule;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
 import org.matsim.contrib.drt.analysis.zonal.DrtModeZonalSystemModule;
@@ -35,7 +34,7 @@ public class RunFixedThresholdExperiments implements MATSimAppCommand {
     private String threshold;
 
     @CommandLine.Option(names = "--alternative-data", description = "path to alternative mode data", required = true)
-    private Path alternativeDataPath;
+    private String alternativeDataPath;
 
     public static void main(String[] args) {
         new RunFixedThresholdExperiments().execute(args);
@@ -64,7 +63,6 @@ public class RunFixedThresholdExperiments implements MATSimAppCommand {
 
             // Add mode module
             for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
-                controler.addOverridingModule(new LinearStopDurationModule(drtCfg));
                 controler.addOverridingModule(new DvrpModule(new DrtModeZonalSystemModule(drtCfg)));
             }
             controler.run();
@@ -74,7 +72,10 @@ public class RunFixedThresholdExperiments implements MATSimAppCommand {
         }
 
         // Perform analysis
-        ExperimentAnalysis.performAnalysis(outputDirectory, fleetFrom, fleetMax, fleetInterval, alternativeDataPath);
+        {
+            Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
+            ExperimentAnalysis.performAnalysis(outputDirectory, fleetFrom, fleetMax, fleetInterval, alternativeDataPath, config);
+        }
 
         return 0;
     }
