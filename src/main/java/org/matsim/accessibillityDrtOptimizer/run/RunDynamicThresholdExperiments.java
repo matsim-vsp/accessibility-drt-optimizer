@@ -34,10 +34,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeTripData.*;
 
@@ -65,7 +62,7 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
 
     private static final Logger log = LogManager.getLogger(RunDynamicThresholdExperiments.class);
 
-    private final Map<Integer, Double> thresholdMap = new HashMap<>();
+    private final Map<Integer, Double> thresholdMap = new LinkedHashMap<>();
 
     private final Map<String, Tuple<Double, Double>> alternativeModeData = new HashMap<>();
     // Tuple: departure time, trip length ratio (against max drt travel time)
@@ -156,6 +153,8 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
                 } else {
                     // Write overall analysis
                     overallAnalysis.writeDataEntry(outputFolder, fleetSize);
+                    // Delete the temp population
+                    Files.delete(Path.of(temporaryPopulationPath));
                 }
             }
         }
