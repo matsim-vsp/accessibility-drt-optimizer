@@ -126,7 +126,7 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
 
                 Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
                 config.controler().setOutputDirectory(outputFolder);
-                config.plans().setInputFile(temporaryPopulationPath);
+                config.plans().setInputFile("temporary-" + tempId + ".plans.xml.gz");
 
                 // Currently we only focus on single DRT mode
                 DrtConfigGroup drtConfigGroup = DrtConfigGroup.getSingleModeDrtConfig(config);
