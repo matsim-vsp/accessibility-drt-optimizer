@@ -51,7 +51,7 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
     @CommandLine.Option(names = "--iterations", description = "outer iterations", defaultValue = "20")
     private int outerIterations;
 
-    @CommandLine.Option(names = "--learning-rate", description = "learning rate with exp discount", defaultValue = "0.5")
+    @CommandLine.Option(names = "--learning-rate", description = "learning rate with exp discount", defaultValue = "0.05")
     private double learningRate;
 
     @CommandLine.Option(names = "--time-bin-size", description = "time bin size for the travel time analysis", defaultValue = "900")
