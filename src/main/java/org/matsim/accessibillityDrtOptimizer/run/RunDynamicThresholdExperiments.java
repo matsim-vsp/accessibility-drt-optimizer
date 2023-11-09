@@ -153,11 +153,14 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
                 } else {
                     // Write overall analysis
                     overallAnalysis.writeDataEntry(outputFolder, fleetSize);
-                    // Delete the temp population
-                    Files.delete(Path.of(temporaryPopulationPath));
+                    // Overwrite temporary population with raw population for next fleet size runs
+                    new PopulationWriter(rawPopulation).write(temporaryPopulationPath);
                 }
             }
         }
+
+        // Delete temporary population file at the end
+        Files.delete(Path.of(temporaryPopulationPath));
 
         return 0;
     }
