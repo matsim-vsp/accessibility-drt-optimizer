@@ -35,3 +35,5 @@ hs_err_pid*
 
 #target folder
 /target
+src/main/R/.RData
+src/main/R/.Rhistory
