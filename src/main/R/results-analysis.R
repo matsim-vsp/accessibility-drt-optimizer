@@ -77,6 +77,16 @@ processed_data <- bind_rows(
   complete_fixed_threshold_data
 )
 
+table_summary <- processed_data %>%
+  filter (satisfactory_rate > 0.95) %>%
+  group_by(threshold) %>%
+  slice(which.min(fleet_size)) %>%
+  mutate(request_per_vehicle = num_drt_trips_served / fleet_size)
+
+table_summary_2 <- processed_data %>%
+  filter (fleet_size == 550) %>%
+  mutate(request_per_vehicle = num_drt_trips_served / fleet_size)
+
 max_work_load_data <- processed_data %>% 
   filter(threshold == "benchmark" | threshold == "dynamic" | threshold == 0.8 | threshold == 1) %>% 
   filter (satisfactory_rate > 0.95)
@@ -127,6 +137,21 @@ workload_plot <- ggplot(data = max_work_load_data, aes(x = num_drt_trips_served 
 ggsave("/Users/luchengqi/Documents/TU-Berlin/Projects/DRT-accessbility-study/r-scipts/plots/workload_plot_berlin.png", plot = workload_plot, width = 1500, height = 1200, units = "px")
 
 
+num_requests_plot <- ggplot(data = processed_data %>%
+                              filter(threshold == "benchmark" | threshold == "dynamic" | threshold == 0.8 | threshold == 1) #%>% filter(satisfactory_rate > 0.95)
+                              , aes(x = fleet_size, y = num_drt_trips_served, color = threshold, shape = threshold)) +
+  geom_line() +
+  # geom_point() +
+  labs(title = "Number of DRT trips served under different setups",
+       x = "Fleet size",
+       y = "Number of DRT trips served") +
+  theme_light() +
+  xlim(300,600) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 26000)) +
+  theme(plot.title = element_text(hjust = 0.5))
+ggsave("/Users/luchengqi/Documents/TU-Berlin/Projects/DRT-accessbility-study/r-scipts/plots/num_requests_berlin.png", plot = num_requests_plot, width = 1500, height = 1200, units = "px")
+
+
 # Iteration summary
 iteration_summary <- ggplot(complete_dynamic_data %>% filter(fleet_size == 300 | fleet_size == 400 | fleet_size == 500 | fleet_size == 600), aes(x = iteration, y = satisfactory_rate, color = as.character(fleet_size))) +
   geom_line() +
@@ -159,14 +184,14 @@ dynamic_threshold_plot <- ggplot() +
   geom_line(data = fleet_600_it_153, aes(x = time / 3600, y = threshold, color = "600")) +
   xlim(0, 24) +
   ylim(0, 1) +
-  scale_color_manual(name = "fleet size", values=c("red", "orange", "blue", "purple")) +
+  #scale_color_manual(name = "fleet size", values=c("red", "orange", "blue", "purple")) +
+  scale_color_discrete(name = "fleet size") +
   labs(title = "Dynamic threshold",
        x = "Time of the day [hour]",
        y = "Dynamic threshold value") +
   theme_light() +
   theme(plot.title = element_text(hjust = 0.5))
-ggsave("/Users/luchengqi/Documents/TU-Berlin/Projects/DRT-accessbility-study/r-scipts/plots/dynamic_threshold_plot_berlin.png", plot = dynamic_threshold_plot, width = 1500, height = 1200, units = "px")
-
+ggsave("/Users/luchengqi/Documents/TU-Berlin/Projects/DRT-accessbility-study/r-scipts/plots/dynamic-gamma-berlin.png", plot = dynamic_threshold_plot, width = 1500, height = 1200, units = "px")
 
 ############## Other plots ########################
 workload_fleet_size_plot <- ggplot(processed_data %>% 
