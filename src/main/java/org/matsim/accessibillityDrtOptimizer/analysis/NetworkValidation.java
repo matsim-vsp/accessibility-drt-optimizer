@@ -1,33 +1,30 @@
 package org.matsim.accessibillityDrtOptimizer.analysis;
 
-import com.google.common.base.Preconditions;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
-import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
+import org.matsim.api.core.v01.network.Node;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.application.options.CrsOptions;
-import org.matsim.application.options.ShpOptions;
 import org.matsim.contrib.analysis.vsp.traveltimedistance.GoogleMapRouteValidator;
 import org.matsim.contrib.analysis.vsp.traveltimedistance.HereMapsRouteValidator;
 import org.matsim.contrib.analysis.vsp.traveltimedistance.TravelTimeDistanceValidator;
+import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.MainModeIdentifier;
 import org.matsim.core.router.TripStructureUtils;
-import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutility;
 import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.collections.Tuple;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
-import org.matsim.core.utils.geometry.transformations.GeotoolsTransformation;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
@@ -52,16 +49,19 @@ public class NetworkValidation implements MATSimAppCommand {
     @CommandLine.Option(names = "--output", description = "output folder for the route calculation", required = true)
     private String outputPath;
 
+    @CommandLine.Option(names = "--data-base", description = "path to the data base", required = true)
+    private String dataBase;
+
     @CommandLine.Option(names = "--date", description = "The date to validate travel times for, format: YYYY-MM-DD")
     private LocalDate date;
 
-    @CommandLine.Option(names = "--max-validation", description = "output folder for the route calculation", defaultValue = "500")
+    @CommandLine.Option(names = "--max-validation", description = "output folder for the route calculation", defaultValue = "1000")
     private double maxValidations;
 
-    @CommandLine.Option(names = "--epsg", description = "input coordinate system", defaultValue = "EPSG:31468")
-    private String epsg;
+    @CommandLine.Mixin
+    private CrsOptions crs = new CrsOptions();
 
-    private enum API {
+    enum API {
         HERE, GOOGLE_MAP, NETWORK_FILE
     }
 
@@ -73,7 +73,7 @@ public class NetworkValidation implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
-        CoordinateTransformation ct = new GeotoolsTransformation(epsg, "EPSG:4326");
+        CoordinateTransformation ct = crs.getTransformation();
         TravelTimeDistanceValidator validator;
         MainModeIdentifier mainModeIdentifier = new DefaultAnalysisMainModeIdentifier();
 
@@ -96,10 +96,12 @@ public class NetworkValidation implements MATSimAppCommand {
         Population population = PopulationUtils.readPopulation(plansPath);
         Network network = NetworkUtils.readNetwork(networkPath);
         TravelTime travelTime = new QSimFreeSpeedTravelTime(1.0);
-        LeastCostPathCalculator router = new SpeedyALTFactory().createPathCalculator(network, new OnlyTimeDependentTravelDisutility(travelTime), travelTime);
+        LeastCostPathCalculator router = new SpeedyALTFactory().createPathCalculator(network, new TimeAsTravelDisutility(travelTime), travelTime);
 
         CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath + "/network-validation-" + api.toString() + ".tsv"), CSVFormat.TDF);
         tsvWriter.printRecord("trip_id", "from_x", "from_y", "to_x", "to_y", "network_travel_time", "validated_travel_time", "network_travel_distance", "validated_travel_distance");
+
+        NetworkValidatorWithDataStorage validatorWithDataStorage = new NetworkValidatorWithDataStorage(dataBase, validator);
 
         int validated = 0;
         for (Person person : population.getPersons().values()) {
@@ -111,30 +113,35 @@ public class NetworkValidation implements MATSimAppCommand {
                     continue;
                 }
                 String tripId = person.getId().toString() + "_" + personTripCounter;
-                Coord from = trip.getOriginActivity().getCoord();
-                if (from == null) {
-                    from = network.getLinks().get(trip.getOriginActivity().getLinkId()).getToNode().getCoord();
-                }
-                Link fromLink = NetworkUtils.getNearestLink(network, from);
 
-                Coord to = trip.getDestinationActivity().getCoord();
-                if (to == null) {
-                    to = network.getLinks().get(trip.getDestinationActivity().getLinkId()).getToNode().getCoord();
+                Link fromLink;
+                if (trip.getOriginActivity().getLinkId() == null){
+                    fromLink = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord());
+                } else {
+                    fromLink = network.getLinks().get(trip.getOriginActivity().getLinkId());
                 }
-                Link toLink = NetworkUtils.getNearestLink(network, to);
+                Node fromNode = fromLink.getToNode();
+
+                Link toLink;
+                if (trip.getDestinationActivity().getLinkId() == null){
+                    toLink = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord());
+                } else {
+                    toLink = network.getLinks().get(trip.getDestinationActivity().getLinkId());
+                }
+                Node toNode = toLink.getToNode();
 
                 double departureTime = trip.getOriginActivity().getEndTime().orElseThrow(RuntimeException::new);
 //                double departureTime = 3600;   // To test free speed travel time
 
-                Tuple<Double, Double> validatedResult = validator.getTravelTime(from, to, departureTime, tripId);
+                Tuple<Double, Double> validatedResult = validatorWithDataStorage.validate(fromNode, toNode);
                 LeastCostPathCalculator.Path route = router.calcLeastCostPath(fromLink.getToNode(), toLink.getToNode(), departureTime, null, null);
                 double networkTravelDistance = route.links.stream().mapToDouble(Link::getLength).sum();
 
-                tsvWriter.printRecord(tripId, from.getX(), from.getY(), to.getX(), to.getY(), route.travelTime, validatedResult.getFirst(), networkTravelDistance, validatedResult.getSecond());
+                tsvWriter.printRecord(tripId, fromNode.getCoord().getX(), fromNode.getCoord().getY(), toNode.getCoord().getX(), toNode.getCoord().getY(),
+                        route.travelTime, validatedResult.getFirst(), networkTravelDistance, validatedResult.getSecond());
 
                 validated++;
                 personTripCounter++;
-                Thread.sleep(100);
             }
 
             if (validated >= maxValidations) {
@@ -142,6 +149,9 @@ public class NetworkValidation implements MATSimAppCommand {
             }
         }
         tsvWriter.close();
+
+        validatorWithDataStorage.writeDownNewEntriesInDataBase();
+
         return 0;
     }
 }
