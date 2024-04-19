@@ -1,7 +1,10 @@
 package org.matsim.accessibillityDrtOptimizer.network_calibration;
 
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -28,12 +31,18 @@ import org.matsim.core.utils.geometry.CoordinateTransformation;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-public class NetworkValidation implements MATSimAppCommand {
+import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorWithDataStorage.*;
+
+public class RunNetworkValidation implements MATSimAppCommand {
     @CommandLine.Option(names = "--api", description = "path to network file", defaultValue = "GOOGLE_MAP")
     private API api;
 
@@ -43,8 +52,8 @@ public class NetworkValidation implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "path to network file", required = true)
     private String networkPath;
 
-    @CommandLine.Option(names = "--plans", description = "plans to be validated", required = true)
-    private String plansPath;
+    @CommandLine.Option(names = "--od-pairs", description = "plans to be validated", required = true)
+    private Path odPairsPath;
 
     @CommandLine.Option(names = "--output", description = "output folder for the route calculation", required = true)
     private String outputPath;
@@ -55,7 +64,7 @@ public class NetworkValidation implements MATSimAppCommand {
     @CommandLine.Option(names = "--date", description = "The date to validate travel times for, format: YYYY-MM-DD")
     private LocalDate date;
 
-    @CommandLine.Option(names = "--max-validation", description = "output folder for the route calculation", defaultValue = "1000")
+    @CommandLine.Option(names = "--max-validation", description = "max number of validation to perform", defaultValue = "1000")
     private double maxValidations;
 
     @CommandLine.Mixin
@@ -68,7 +77,7 @@ public class NetworkValidation implements MATSimAppCommand {
     private final String mode = "car";
 
     public static void main(String[] args) {
-        new NetworkValidation().execute(args);
+        new RunNetworkValidation().execute(args);
     }
 
     @Override
@@ -93,61 +102,49 @@ public class NetworkValidation implements MATSimAppCommand {
             throw new RuntimeException("Wrong API used. Allowed values for --api are: GOOGLE_MAP, HERE. Do not use NETWORK_BASED validator in this analysis");
         }
 
-        Population population = PopulationUtils.readPopulation(plansPath);
         Network network = NetworkUtils.readNetwork(networkPath);
         TravelTime travelTime = new QSimFreeSpeedTravelTime(1.0);
         LeastCostPathCalculator router = new SpeedyALTFactory().createPathCalculator(network, new TimeAsTravelDisutility(travelTime), travelTime);
+        NetworkValidatorWithDataStorage validatorWithDataStorage = new NetworkValidatorWithDataStorage(dataBase, validator);
 
         CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath + "/network-validation-" + api.toString() + ".tsv"), CSVFormat.TDF);
         tsvWriter.printRecord("trip_id", "from_x", "from_y", "to_x", "to_y", "network_travel_time", "validated_travel_time", "network_travel_distance", "validated_travel_distance");
 
-        NetworkValidatorWithDataStorage validatorWithDataStorage = new NetworkValidatorWithDataStorage(dataBase, validator);
-
         int validated = 0;
-        for (Person person : population.getPersons().values()) {
-            int personTripCounter = 0;
-            List<TripStructureUtils.Trip> trips = TripStructureUtils.getTrips(person.getSelectedPlan());
-            for (TripStructureUtils.Trip trip : trips) {
-                String mainMode = mainModeIdentifier.identifyMainMode(trip.getTripElements());
-                if (!mainMode.equals(TransportMode.car) && !mainMode.equals(TransportMode.drt)) {
-                    continue;
-                }
-                String tripId = person.getId().toString() + "_" + personTripCounter;
 
-                Link fromLink;
-                if (trip.getOriginActivity().getLinkId() == null){
-                    fromLink = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord());
-                } else {
-                    fromLink = network.getLinks().get(trip.getOriginActivity().getLinkId());
-                }
-                Node fromNode = fromLink.getToNode();
+        try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.TDF).setHeader().setSkipHeaderRecord(true).
+                build().parse(Files.newBufferedReader(odPairsPath))) {
+            for (CSVRecord record : parser.getRecords()) {
+                String fromNodeIdString = record.get(FROM_NODE_ID_STRING);
+                String toNodeIdString = record.get(TO_NODE_ID_STRING);
+                Node fromNode = network.getNodes().get(Id.createNodeId(fromNodeIdString));
+                Node toNode = network.getNodes().get(Id.createNodeId(toNodeIdString));
+                double departureTime = Double.parseDouble(record.get(DEPARTURE_TIME));
+                LeastCostPathCalculator.Path route = router.calcLeastCostPath(fromNode, toNode, 0, null, null);
+                double networkDistance = route.links.stream().mapToDouble(Link::getLength).sum();
 
-                Link toLink;
-                if (trip.getDestinationActivity().getLinkId() == null){
-                    toLink = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord());
-                } else {
-                    toLink = network.getLinks().get(trip.getDestinationActivity().getLinkId());
-                }
-                Node toNode = toLink.getToNode();
+                Tuple<Double, Double> validatedTimeAndDistance = validatorWithDataStorage.validate(fromNode, toNode, departureTime);
+                List<String> outputRow = Arrays.asList(
+                        Integer.toString(validated),
+                        Double.toString(fromNode.getCoord().getX()),
+                        Double.toString(fromNode.getCoord().getY()),
+                        Double.toString(toNode.getCoord().getX()),
+                        Double.toString(toNode.getCoord().getY()),
+                        Double.toString(route.travelTime),
+                        Double.toString(validatedTimeAndDistance.getFirst()),
+                        Double.toString(networkDistance),
+                        Double.toString(validatedTimeAndDistance.getSecond())
+                );
 
-                double departureTime = trip.getOriginActivity().getEndTime().orElseThrow(RuntimeException::new);
-//                double departureTime = 3600;   // To test free speed travel time
-
-                Tuple<Double, Double> validatedResult = validatorWithDataStorage.validate(fromNode, toNode);
-                LeastCostPathCalculator.Path route = router.calcLeastCostPath(fromLink.getToNode(), toLink.getToNode(), departureTime, null, null);
-                double networkTravelDistance = route.links.stream().mapToDouble(Link::getLength).sum();
-
-                tsvWriter.printRecord(tripId, fromNode.getCoord().getX(), fromNode.getCoord().getY(), toNode.getCoord().getX(), toNode.getCoord().getY(),
-                        route.travelTime, validatedResult.getFirst(), networkTravelDistance, validatedResult.getSecond());
-
+                tsvWriter.printRecord(outputRow);
                 validated++;
-                personTripCounter++;
-            }
 
-            if (validated >= maxValidations) {
-                break;
+                if (validated >= maxValidations) {
+                    break;
+                }
             }
         }
+
         tsvWriter.close();
 
         validatorWithDataStorage.writeDownNewEntriesInDataBase();
