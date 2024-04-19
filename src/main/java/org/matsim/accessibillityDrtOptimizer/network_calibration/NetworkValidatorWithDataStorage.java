@@ -1,4 +1,4 @@
-package org.matsim.accessibillityDrtOptimizer.analysis;
+package org.matsim.accessibillityDrtOptimizer.network_calibration;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -23,8 +23,8 @@ public class NetworkValidatorWithDataStorage {
     private final String dataStorage;
     private final TravelTimeDistanceValidator validator;
 
-    private final static String FROM_NODE_ID_STRING = "from_node_id";
-    private final static String TO_NODE_ID_STRING = "to_node_id";
+    final static String FROM_NODE_ID_STRING = "from_node_id";
+    final static String TO_NODE_ID_STRING = "to_node_id";
     private final static String API_TRAVEL_TIME_STRING = "travel_time_from_api";
     private final static String API_TRAVEL_DISTANCE_STRING = "travel_distance_from_api";
 
