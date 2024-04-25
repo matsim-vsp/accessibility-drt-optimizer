@@ -120,7 +120,7 @@ public class RunNetworkValidation implements MATSimAppCommand {
                 Node fromNode = network.getNodes().get(Id.createNodeId(fromNodeIdString));
                 Node toNode = network.getNodes().get(Id.createNodeId(toNodeIdString));
                 double departureTime = Double.parseDouble(record.get(DEPARTURE_TIME));
-                LeastCostPathCalculator.Path route = router.calcLeastCostPath(fromNode, toNode, 0, null, null);
+                LeastCostPathCalculator.Path route = router.calcLeastCostPath(fromNode, toNode, departureTime, null, null);
                 double networkDistance = route.links.stream().mapToDouble(Link::getLength).sum();
 
                 Tuple<Double, Double> validatedTimeAndDistance = validatorWithDataStorage.validate(fromNode, toNode, departureTime);
