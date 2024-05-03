@@ -131,15 +131,16 @@ class NetworkCalibrator {
             Map<Id<Link>, MutableInt> scoreMap = new HashMap<>();
 
             for (Tuple<Id<Node>, Id<Node>> odPair : normalizedTravelTimeMap.keySet()) {
+                // The links are covered once
+                pathMap.get(odPair).links.forEach(link -> counterMap.computeIfAbsent(link.getId(), v -> new MutableInt()).increment());
+
                 // If travel time on network is too long : contribute to positive score for each link the od pair covers
                 if (normalizedTravelTimeMap.get(odPair) > 1 + threshold) {
-                    pathMap.get(odPair).links.forEach(link -> counterMap.computeIfAbsent(link.getId(), v -> new MutableInt()).increment());
                     pathMap.get(odPair).links.forEach(link -> scoreMap.computeIfAbsent(link.getId(), v -> new MutableInt()).increment());
                 }
 
                 // If travel time on network is too short : contribute to negative score for each link the od pair covers
                 if (normalizedTravelTimeMap.get(odPair) < 1 - threshold) {
-                    pathMap.get(odPair).links.forEach(link -> counterMap.computeIfAbsent(link.getId(), v -> new MutableInt()).increment());
                     pathMap.get(odPair).links.forEach(link -> scoreMap.computeIfAbsent(link.getId(), v -> new MutableInt()).decrement());
                 }
             }

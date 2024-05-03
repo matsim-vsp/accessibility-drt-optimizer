@@ -36,7 +36,7 @@ public class RunNetworkCalibration implements MATSimAppCommand {
     @CommandLine.Option(names = "--threshold", description = "threshold for an OD pair to be considered too slow/to fast on network", defaultValue = "0.05")
     private double threshold;
 
-    @CommandLine.Option(names = "--cut-off", description = "cut-off line do determine whether a link will be adjusted, range between (0,1)", defaultValue = "0.5")
+    @CommandLine.Option(names = "--cut-off", description = "cut-off line do determine whether a link will be adjusted, range between (0,1)", defaultValue = "0.1")
     private double cutOff;
 
     @CommandLine.Option(names = "--departure-time", description = "departure time of the trips", defaultValue = "3600")
