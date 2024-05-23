@@ -25,6 +25,7 @@ public class NetworkValidatorWithDataStorage {
 
     final static String FROM_NODE_ID_STRING = "from_node_id";
     final static String TO_NODE_ID_STRING = "to_node_id";
+    final static String DEPARTURE_TIME = "departure_time";
     private final static String API_TRAVEL_TIME_STRING = "travel_time_from_api";
     private final static String API_TRAVEL_DISTANCE_STRING = "travel_distance_from_api";
 
@@ -71,9 +72,10 @@ public class NetworkValidatorWithDataStorage {
     /**
      * @param fromNode: from Node
      * @param toNode:   to Node
+     * @param departureTime: departure time of the trip
      * @return A tuple consisting travel time (first element of the Tuple) and travel distance (second element of the Tuple) from online API </>
      */
-    public Tuple<Double, Double> validate(Node fromNode, Node toNode) throws InterruptedException {
+    public Tuple<Double, Double> validate(Node fromNode, Node toNode, double departureTime) throws InterruptedException {
         String fromNodeIdString = fromNode.getId().toString();
         String toNodeIdString = toNode.getId().toString();
         Tuple<String, String> key = new Tuple<>(fromNodeIdString, toNodeIdString);
@@ -86,7 +88,7 @@ public class NetworkValidatorWithDataStorage {
             Coord fromCoord = fromNode.getCoord();
             Coord toCoord = toNode.getCoord();
             // Currently, time-invariant travel time is used. We use 1:00 am to get a near free-speed travel time
-            Tuple<Double, Double> dataFromApi = validator.getTravelTime(fromCoord, toCoord, 3600, "null");
+            Tuple<Double, Double> dataFromApi = validator.getTravelTime(fromCoord, toCoord, departureTime, "null");
             // To avoid sending request to online API too frequently, a short pause is added
             Thread.sleep(100);
             dataBase.put(key, dataFromApi);
