@@ -5,12 +5,9 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
-import org.matsim.api.core.v01.population.Person;
-import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.application.options.CrsOptions;
@@ -20,9 +17,7 @@ import org.matsim.contrib.analysis.vsp.traveltimedistance.TravelTimeDistanceVali
 import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.router.MainModeIdentifier;
-import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelTime;
@@ -36,11 +31,10 @@ import java.nio.file.Path;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorWithDataStorage.*;
+import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.*;
 
 public class RunNetworkValidation implements MATSimAppCommand {
     @CommandLine.Option(names = "--api", description = "path to network file", defaultValue = "GOOGLE_MAP")
@@ -105,7 +99,7 @@ public class RunNetworkValidation implements MATSimAppCommand {
         Network network = NetworkUtils.readNetwork(networkPath);
         TravelTime travelTime = new QSimFreeSpeedTravelTime(1.0);
         LeastCostPathCalculator router = new SpeedyALTFactory().createPathCalculator(network, new TimeAsTravelDisutility(travelTime), travelTime);
-        NetworkValidatorWithDataStorage validatorWithDataStorage = new NetworkValidatorWithDataStorage(dataBase, validator);
+        NetworkValidatorBasedOnLocalData networkValidatorBasedOnLocalData = new NetworkValidatorBasedOnLocalData(dataBase);
 
         CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath + "/network-validation-" + api.toString() + ".tsv"), CSVFormat.TDF);
         tsvWriter.printRecord("trip_id", "from_x", "from_y", "to_x", "to_y", "network_travel_time", "validated_travel_time", "network_travel_distance", "validated_travel_distance");
@@ -115,15 +109,15 @@ public class RunNetworkValidation implements MATSimAppCommand {
         try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.TDF).setHeader().setSkipHeaderRecord(true).
                 build().parse(Files.newBufferedReader(odPairsPath))) {
             for (CSVRecord record : parser.getRecords()) {
-                String fromNodeIdString = record.get(FROM_NODE_ID_STRING);
-                String toNodeIdString = record.get(TO_NODE_ID_STRING);
+                String fromNodeIdString = record.get(FROM_NODE);
+                String toNodeIdString = record.get(TO_NODE);
                 Node fromNode = network.getNodes().get(Id.createNodeId(fromNodeIdString));
                 Node toNode = network.getNodes().get(Id.createNodeId(toNodeIdString));
-                double departureTime = Double.parseDouble(record.get(DEPARTURE_TIME));
+                double departureTime = Double.parseDouble(record.get(HOUR));
                 LeastCostPathCalculator.Path route = router.calcLeastCostPath(fromNode, toNode, departureTime, null, null);
                 double networkDistance = route.links.stream().mapToDouble(Link::getLength).sum();
 
-                Tuple<Double, Double> validatedTimeAndDistance = validatorWithDataStorage.validate(fromNode, toNode, departureTime);
+                Tuple<Double, Double> validatedTimeAndDistance = networkValidatorBasedOnLocalData.validate(fromNode, toNode, departureTime);
                 List<String> outputRow = Arrays.asList(
                         Integer.toString(validated),
                         Double.toString(fromNode.getCoord().getX()),
@@ -146,8 +140,6 @@ public class RunNetworkValidation implements MATSimAppCommand {
         }
 
         tsvWriter.close();
-
-        validatorWithDataStorage.writeDownNewEntriesInDataBase();
 
         return 0;
     }

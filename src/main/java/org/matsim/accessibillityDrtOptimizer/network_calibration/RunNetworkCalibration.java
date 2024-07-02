@@ -21,13 +21,10 @@ public class RunNetworkCalibration implements MATSimAppCommand {
     @CommandLine.Option(names = "--output", description = "Path to network file", required = true)
     private String outputNetworkPath;
 
-    @CommandLine.Option(names = "--api-key", description = "Google MAP API key", required = true)
-    private String apiKey;
-
-    @CommandLine.Option(names = "--od-pairs", description = "Path to OD pair file", required = true)
+    @CommandLine.Option(names = "--od-pairs", description = "Path to OD pair file (can also be the data base)", required = true)
     private Path odPairsPath;
 
-    @CommandLine.Option(names = "--data-base", description = "Path to data base (csv / tsv file)", required = true)
+    @CommandLine.Option(names = "--data-base", description = "Path to local data base (csv / tsv file)", required = true)
     private String dataBase;
 
     @CommandLine.Option(names = "--iterations", description = "Number of iterations to run", defaultValue = "1")
@@ -39,7 +36,7 @@ public class RunNetworkCalibration implements MATSimAppCommand {
     @CommandLine.Option(names = "--cut-off", description = "cut-off line do determine whether a link will be adjusted, range between (0,1)", defaultValue = "0.1")
     private double cutOff;
 
-    @CommandLine.Option(names = "--departure-time", description = "departure time of the trips", defaultValue = "3600")
+    @CommandLine.Option(names = "--departure-time", description = "departure time of the trips (in hours)", defaultValue = "1")
     private double departureTime;
 
     @CommandLine.Mixin
@@ -52,9 +49,7 @@ public class RunNetworkCalibration implements MATSimAppCommand {
     @Override
     public Integer call() throws Exception {
         Network network = NetworkUtils.readNetwork(networkPath);
-        LocalDate date = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.WEDNESDAY));
-        GoogleMapRouteValidator googleMapApiReader = new GoogleMapRouteValidator("null", TransportMode.car, apiKey, date.toString(), crs.getTransformation());
-        NetworkValidatorWithDataStorage validator = new NetworkValidatorWithDataStorage(dataBase, googleMapApiReader);
+        NetworkValidatorBasedOnLocalData validator = new NetworkValidatorBasedOnLocalData(dataBase);
 
         NetworkCalibrator calibrator = new NetworkCalibrator.Builder(network, validator)
                 .setIterations(iterations).setCutOff(cutOff).setThreshold(threshold).setDepartureTime(departureTime)

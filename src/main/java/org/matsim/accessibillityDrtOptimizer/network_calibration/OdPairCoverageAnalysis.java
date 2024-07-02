@@ -27,7 +27,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorWithDataStorage.*;
+import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.*;
 
 public class OdPairCoverageAnalysis implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "path to network file", required = true)
@@ -62,11 +62,11 @@ public class OdPairCoverageAnalysis implements MATSimAppCommand {
         try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.TDF).setHeader().setSkipHeaderRecord(true).
                 build().parse(Files.newBufferedReader(odPairsPath))) {
             for (CSVRecord record : parser.getRecords()) {
-                String fromNodeIdString = record.get(FROM_NODE_ID_STRING);
-                String toNodeIdString = record.get(TO_NODE_ID_STRING);
+                String fromNodeIdString = record.get(FROM_NODE);
+                String toNodeIdString = record.get(TO_NODE);
                 Node fromNode = network.getNodes().get(Id.createNodeId(fromNodeIdString));
                 Node toNode = network.getNodes().get(Id.createNodeId(toNodeIdString));
-                double departureTime = Double.parseDouble(record.get(DEPARTURE_TIME));
+                double departureTime = Double.parseDouble(record.get(HOUR));
                 LeastCostPathCalculator.Path route = router.calcLeastCostPath(fromNode, toNode, departureTime, null, null);
                 for (Link link : route.links) {
                     linksCounterMap.get(link.getId()).increment();

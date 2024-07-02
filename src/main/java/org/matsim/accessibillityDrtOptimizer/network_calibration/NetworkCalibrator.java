@@ -27,12 +27,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorWithDataStorage.FROM_NODE_ID_STRING;
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorWithDataStorage.TO_NODE_ID_STRING;
+import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.FROM_NODE;
+import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.TO_NODE;
 
 class NetworkCalibrator {
     private final Network network;
-    private final NetworkValidatorWithDataStorage validator;
+    private final NetworkValidatorBasedOnLocalData validator;
     private final int iterations;
     private final double threshold;
     private final double cutOff;
@@ -45,13 +45,13 @@ class NetworkCalibrator {
 
     public static class Builder {
         private final Network network;
-        private final NetworkValidatorWithDataStorage validator;
+        private final NetworkValidatorBasedOnLocalData validator;
         private int iterations = 1;
         private double threshold = 0.05;
         private double cutOff = 0.5;
         private double departureTime = 3600;
 
-        public Builder(Network network, NetworkValidatorWithDataStorage validator) {
+        public Builder(Network network, NetworkValidatorBasedOnLocalData validator) {
             this.network = network;
             this.validator = validator;
         }
@@ -100,8 +100,8 @@ class NetworkCalibrator {
         try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.TDF).setHeader().setSkipHeaderRecord(true).
                 build().parse(Files.newBufferedReader(odPairsPath))) {
             for (CSVRecord record : parser.getRecords()) {
-                String fromNodeIdString = record.get(FROM_NODE_ID_STRING);
-                String toNodeIdString = record.get(TO_NODE_ID_STRING);
+                String fromNodeIdString = record.get(FROM_NODE);
+                String toNodeIdString = record.get(TO_NODE);
                 odPairs.add(new Tuple<>(Id.createNodeId(fromNodeIdString), Id.createNodeId(toNodeIdString)));
             }
         }
