@@ -41,7 +41,7 @@ public class NetworkValidatorBasedOnLocalData {
         if (Files.exists(dataStoragePath)) {
             // Load the file and read in data
             log.info("Reading local database");
-            try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.TDF).setHeader().setSkipHeaderRecord(true).
+            try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT).setHeader().setSkipHeaderRecord(true).
                     build().parse(Files.newBufferedReader(dataStoragePath))) {
                 for (CSVRecord record : parser.getRecords()) {
                     String fromNodeIdString = record.get(FROM_NODE);

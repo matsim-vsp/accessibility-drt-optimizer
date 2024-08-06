@@ -97,7 +97,7 @@ class NetworkCalibrator {
     }
 
     void readOdPairs(Path odPairsPath) throws IOException {
-        try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.TDF).setHeader().setSkipHeaderRecord(true).
+        try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT).setHeader().setSkipHeaderRecord(true).
                 build().parse(Files.newBufferedReader(odPairsPath))) {
             for (CSVRecord record : parser.getRecords()) {
                 String fromNodeIdString = record.get(FROM_NODE);

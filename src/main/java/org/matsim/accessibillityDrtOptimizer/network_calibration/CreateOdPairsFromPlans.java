@@ -61,7 +61,7 @@ public class CreateOdPairsFromPlans implements MATSimAppCommand {
         }
         linksToBeRemoved.forEach(link -> network.removeLink(link.getId()));
 
-        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath), CSVFormat.TDF);
+        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath), CSVFormat.DEFAULT);
         tsvWriter.printRecord(FROM_NODE, TO_NODE, HOUR);
 
         int odPairs = 0;
