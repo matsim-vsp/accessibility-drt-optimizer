@@ -6,6 +6,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.matsim.accessibillityDrtOptimizer.utils.CsvUtils;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -22,15 +23,12 @@ import org.matsim.core.utils.collections.Tuple;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.FROM_NODE;
 import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.TO_NODE;
 
-class NetworkCalibrator {
+public class NetworkCalibrator {
     private final Network network;
     private final NetworkValidatorBasedOnLocalData validator;
     private final int iterations;
@@ -39,6 +37,7 @@ class NetworkCalibrator {
     private final double departureTime;
     private final List<Tuple<Id<Node>, Id<Node>>> odPairs = new ArrayList<>();
     private final Map<Tuple<Id<Node>, Id<Node>>, LeastCostPathCalculator.Path> pathMap = new HashMap<>();
+    private final Map<Integer, Double> scores = new LinkedHashMap<>();
 
     // TODO consider add annealing to the threshold and/or cutOff
     private static final Logger log = LogManager.getLogger(NetworkCalibrator.class);
@@ -97,8 +96,10 @@ class NetworkCalibrator {
     }
 
     void readOdPairs(Path odPairsPath) throws IOException {
-        try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT).setHeader().setSkipHeaderRecord(true).
-                build().parse(Files.newBufferedReader(odPairsPath))) {
+        try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT)
+                .setDelimiter(CsvUtils.detectDelimiter(odPairsPath.toString()))
+                .setHeader().setSkipHeaderRecord(true)
+                .build().parse(Files.newBufferedReader(odPairsPath))) {
             for (CSVRecord record : parser.getRecords()) {
                 String fromNodeIdString = record.get(FROM_NODE);
                 String toNodeIdString = record.get(TO_NODE);
@@ -123,9 +124,11 @@ class NetworkCalibrator {
     }
 
     void calibrate() throws InterruptedException {
-        for (int iteration = 0; iteration < iterations; iteration++) {
+        for (int iteration = 1; iteration <= iterations; iteration++) {
             Map<Tuple<Id<Node>, Id<Node>>, Double> normalizedTravelTimeMap = calculateNormalizedTravelTime();
-            log.info("Score (MSE) before iteration #" + iteration + " is " + calculateScore(normalizedTravelTimeMap));
+            double scoreBeforeIteration = calculateScore(normalizedTravelTimeMap);
+            scores.put(iteration - 1, scoreBeforeIteration);
+            log.info("Score (mean absolute error in %) before iteration #" + iteration + " is " + scoreBeforeIteration);
 
             Map<Id<Link>, MutableInt> counterMap = new HashMap<>();
             Map<Id<Link>, MutableInt> scoreMap = new HashMap<>();
@@ -163,11 +166,18 @@ class NetworkCalibrator {
 
         // print out final score
         Map<Tuple<Id<Node>, Id<Node>>, Double> normalizedTravelTimeMap = calculateNormalizedTravelTime();
-        log.info("Score (MSE) after " + iterations + " iterations is " + calculateScore(normalizedTravelTimeMap));
+        double finalScore = calculateScore(normalizedTravelTimeMap);
+        scores.put(iterations, finalScore);
+        log.info("Score (mean absolute error in %) after " + iterations + " iterations is " + finalScore);
+    }
+
+    Map<Integer, Double> getScores() {
+        return scores;
     }
 
     private double calculateScore(Map<Tuple<Id<Node>, Id<Node>>, Double> normalizedTravelTimeMap) {
-        return normalizedTravelTimeMap.values().stream().mapToDouble(value -> (value - 1) * (value - 1) * 1e4).average().orElseThrow();
+        // calculate mean absolute error (in percentage)
+        return normalizedTravelTimeMap.values().stream().mapToDouble(value -> Math.abs(value - 1) * 100).average().orElseThrow();
     }
 
     private Map<Tuple<Id<Node>, Id<Node>>, Double> calculateNormalizedTravelTime() throws InterruptedException {

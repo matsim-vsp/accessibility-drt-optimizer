@@ -1,5 +1,7 @@
 package org.matsim.accessibillityDrtOptimizer.network_calibration;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkWriter;
@@ -8,18 +10,24 @@ import org.matsim.application.options.CrsOptions;
 import org.matsim.contrib.analysis.vsp.traveltimedistance.GoogleMapRouteValidator;
 import org.matsim.core.network.NetworkUtils;
 import picocli.CommandLine;
+import scala.Int;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
+import java.util.List;
+import java.util.Map;
 
 public class RunNetworkCalibration implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "Path to network file", required = true)
     private String networkPath;
 
-    @CommandLine.Option(names = "--output", description = "Path to network file", required = true)
-    private String outputNetworkPath;
+    @CommandLine.Option(names = "--output", description = "Path to output folder", required = true)
+    private String outputfolder;
 
     @CommandLine.Option(names = "--od-pairs", description = "Path to OD pair file (can also be the data base)", required = true)
     private Path odPairsPath;
@@ -55,7 +63,20 @@ public class RunNetworkCalibration implements MATSimAppCommand {
                 .setIterations(iterations).setCutOff(cutOff).setThreshold(threshold).setDepartureTime(departureTime)
                 .build();
         calibrator.performCalibration(odPairsPath);
-        new NetworkWriter(network).write(outputNetworkPath);
+        Map<Integer, Double> scores = calibrator.getScores();
+
+        // write calibrated network and score records
+        if (!Files.exists(Path.of(outputfolder))) {
+            Files.createDirectories(Path.of(outputfolder));
+        }
+        new NetworkWriter(network).write(outputfolder + "/calibrated-network.xml.gz");
+
+        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputfolder + "/scores-records.tsv"), CSVFormat.TDF);
+        tsvWriter.printRecord("iteration", "score");
+        for (Map.Entry<Integer, Double> entry : scores.entrySet()) {
+            tsvWriter.printRecord(entry.getKey(), entry.getValue());
+        }
+        tsvWriter.close();
 
         return 0;
     }

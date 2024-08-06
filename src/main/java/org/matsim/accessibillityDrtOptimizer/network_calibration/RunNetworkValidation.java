@@ -4,6 +4,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.matsim.accessibillityDrtOptimizer.utils.CsvUtils;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -11,6 +12,7 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.application.options.CrsOptions;
+import org.matsim.application.options.CsvOptions;
 import org.matsim.contrib.analysis.vsp.traveltimedistance.GoogleMapRouteValidator;
 import org.matsim.contrib.analysis.vsp.traveltimedistance.HereMapsRouteValidator;
 import org.matsim.contrib.analysis.vsp.traveltimedistance.TravelTimeDistanceValidator;
@@ -106,8 +108,9 @@ public class RunNetworkValidation implements MATSimAppCommand {
 
         int validated = 0;
 
-        try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.TDF).setHeader().setSkipHeaderRecord(true).
-                build().parse(Files.newBufferedReader(odPairsPath))) {
+        try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT)
+                .setDelimiter(CsvUtils.detectDelimiter(odPairsPath.toString())).setHeader().setSkipHeaderRecord(true)
+                .build().parse(Files.newBufferedReader(odPairsPath))) {
             for (CSVRecord record : parser.getRecords()) {
                 String fromNodeIdString = record.get(FROM_NODE);
                 String toNodeIdString = record.get(TO_NODE);

@@ -5,6 +5,7 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.matsim.accessibillityDrtOptimizer.utils.CsvUtils;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.utils.collections.Tuple;
 
@@ -41,7 +42,9 @@ public class NetworkValidatorBasedOnLocalData {
         if (Files.exists(dataStoragePath)) {
             // Load the file and read in data
             log.info("Reading local database");
-            try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT).setHeader().setSkipHeaderRecord(true).
+            try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT)
+                    .setDelimiter(CsvUtils.detectDelimiter(dataStoragePath.toString()))
+                    .setHeader().setSkipHeaderRecord(true).
                     build().parse(Files.newBufferedReader(dataStoragePath))) {
                 for (CSVRecord record : parser.getRecords()) {
                     String fromNodeIdString = record.get(FROM_NODE);
