@@ -29,6 +29,7 @@ hs_err_pid*
 /.ideas
 /ideas
 .idea/
+scenarios/
 
 # "local run" related file and folders
 /scenarios/output
@@ -37,3 +38,4 @@ hs_err_pid*
 /target
 src/main/R/.RData
 src/main/R/.Rhistory
+*.pbf

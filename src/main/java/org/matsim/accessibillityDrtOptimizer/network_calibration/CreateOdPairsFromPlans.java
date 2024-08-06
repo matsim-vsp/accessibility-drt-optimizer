@@ -22,7 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorWithDataStorage.*;
+import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.*;
 
 public class CreateOdPairsFromPlans implements MATSimAppCommand {
     @CommandLine.Option(names = "--plans", description = "plans to be validated", required = true)
@@ -37,7 +37,7 @@ public class CreateOdPairsFromPlans implements MATSimAppCommand {
     @CommandLine.Option(names = "--max-od-pairs", description = "min network distance of the trips", defaultValue = "1000000")
     private long maxNumODPairs;
 
-    @CommandLine.Option(names = "--departure-time", description = "departure time of the trips", defaultValue = "3600")
+    @CommandLine.Option(names = "--departure-time", description = "departure time (in hour of the day) of the trips", defaultValue = "1")
     private double departureTime;
 
     @CommandLine.Option(names = "--min-distance", description = "min euclidean distance of the trips", defaultValue = "500")
@@ -61,8 +61,8 @@ public class CreateOdPairsFromPlans implements MATSimAppCommand {
         }
         linksToBeRemoved.forEach(link -> network.removeLink(link.getId()));
 
-        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath), CSVFormat.TDF);
-        tsvWriter.printRecord(FROM_NODE_ID_STRING, TO_NODE_ID_STRING, DEPARTURE_TIME);
+        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath), CSVFormat.DEFAULT);
+        tsvWriter.printRecord(FROM_NODE, TO_NODE, HOUR);
 
         int odPairs = 0;
         Set<Tuple<Id<Node>, Id<Node>>> existingOdPairs = new HashSet<>();
