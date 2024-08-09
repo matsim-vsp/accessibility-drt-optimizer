@@ -53,7 +53,7 @@ public class NetworkCutter implements MATSimAppCommand {
 
             Point from = MGC.coord2Point(link.getFromNode().getCoord());
             Point to = MGC.coord2Point(link.getToNode().getCoord());
-            if (!from.within(areaToKeep) && !to.within(areaToKeep)) {
+            if (!from.within(areaToKeep) || !to.within(areaToKeep)) {
                 linksToRemove.add(link);
             }
         }
