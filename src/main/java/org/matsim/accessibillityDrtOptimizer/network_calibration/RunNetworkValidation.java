@@ -103,6 +103,9 @@ public class RunNetworkValidation implements MATSimAppCommand {
         LeastCostPathCalculator router = new SpeedyALTFactory().createPathCalculator(network, new TimeAsTravelDisutility(travelTime), travelTime);
         NetworkValidatorBasedOnLocalData networkValidatorBasedOnLocalData = new NetworkValidatorBasedOnLocalData(dataBase);
 
+        if (!Files.exists(Path.of(outputPath))){
+            Files.createDirectories(Path.of(outputPath));
+        }
         CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath + "/network-validation-" + api.toString() + ".tsv"), CSVFormat.TDF);
         tsvWriter.printRecord("trip_id", "from_x", "from_y", "to_x", "to_y", "network_travel_time", "validated_travel_time", "network_travel_distance", "validated_travel_distance");
 
