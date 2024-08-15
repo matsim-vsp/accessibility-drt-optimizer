@@ -38,6 +38,7 @@ public class NetworkCalibrator {
     private final List<Tuple<Id<Node>, Id<Node>>> odPairs = new ArrayList<>();
     private final Map<Tuple<Id<Node>, Id<Node>>, LeastCostPathCalculator.Path> pathMap = new HashMap<>();
     private final Map<Integer, Double> scores = new LinkedHashMap<>();
+    private final DefaultLinkMaxSpeedTable maxSpeedTable = new DefaultLinkMaxSpeedTable();
 
     // TODO consider add annealing to the threshold and/or cutOff
     private static final Logger log = LogManager.getLogger(NetworkCalibrator.class);
@@ -151,14 +152,15 @@ public class NetworkCalibrator {
             for (Id<Link> linkId : scoreMap.keySet()) {
                 double linkScore = scoreMap.get(linkId).doubleValue() / counterMap.get(linkId).doubleValue();
                 if (linkScore > cutOff) {
-                    double originalSpeed = network.getLinks().get(linkId).getFreespeed();
-                    double updatedSpeed = originalSpeed * (1 + threshold);
-                    network.getLinks().get(linkId).setFreespeed(updatedSpeed);
+                    Link link = network.getLinks().get(linkId);
+                    double originalSpeed = link.getFreespeed();
+                    double updatedSpeed = Math.min(originalSpeed * (1 + threshold), maxSpeedTable.getMaxFreeSpeed(link));
+                    link.setFreespeed(updatedSpeed);
                 }
 
                 if (linkScore < cutOff * -1) {
                     double originalSpeed = network.getLinks().get(linkId).getFreespeed();
-                    double updatedSpeed = originalSpeed * (1 - threshold);
+                    double updatedSpeed = Math.max(originalSpeed * (1 - threshold), 5 / 3.6);
                     network.getLinks().get(linkId).setFreespeed(updatedSpeed);
                 }
             }

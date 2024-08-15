@@ -16,14 +16,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class NetworkValidatorBasedOnLocalData {
-    final static String FROM_NODE = "from_node";
-    final static String TO_NODE = "to_node";
+    public final static String FROM_NODE = "from_node";
+    public final static String TO_NODE = "to_node";
     /**
      * Departure time of the trip in the online API
      */
-    final static String HOUR = "hour";
-    private final static String TRAVEL_TIME = "travel_time";
-    private final static String DISTANCE = "dist";
+    public final static String HOUR = "hour";
+    public final static String TRAVEL_TIME = "travel_time";
+    public final static String DISTANCE = "dist";
 
     private static final Logger log = LogManager.getLogger(NetworkValidatorBasedOnLocalData.class);
 

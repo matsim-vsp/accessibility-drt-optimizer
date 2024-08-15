@@ -9,6 +9,7 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.network.algorithms.MultimodalNetworkCleaner;
+import org.matsim.core.network.algorithms.NetworkCleaner;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import picocli.CommandLine;
 
@@ -53,7 +54,7 @@ public class NetworkCutter implements MATSimAppCommand {
 
             Point from = MGC.coord2Point(link.getFromNode().getCoord());
             Point to = MGC.coord2Point(link.getToNode().getCoord());
-            if (!from.within(areaToKeep) && !to.within(areaToKeep)) {
+            if (!from.within(areaToKeep) || !to.within(areaToKeep)) {
                 linksToRemove.add(link);
             }
         }
@@ -61,9 +62,13 @@ public class NetworkCutter implements MATSimAppCommand {
             network.removeLink(link.getId());
         }
 
-
-        MultimodalNetworkCleaner networkCleaner = new MultimodalNetworkCleaner(network);
-        networkCleaner.run(Set.of(TransportMode.car));
+        if (keepPT) {
+            MultimodalNetworkCleaner networkCleaner = new MultimodalNetworkCleaner(network);
+            networkCleaner.run(Set.of(TransportMode.car));
+        } else {
+            NetworkCleaner networkCleaner = new NetworkCleaner();
+            networkCleaner.run(network);
+        }
 
         NetworkUtils.writeNetwork(network, outputNetwork);
         return 0;

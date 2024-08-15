@@ -1,10 +1,11 @@
-package org.matsim.accessibillityDrtOptimizer.network_calibration;
+package org.matsim.accessibillityDrtOptimizer.network_calibration.od_pairs;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang.mutable.MutableInt;
+import org.matsim.accessibillityDrtOptimizer.utils.CsvUtils;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -59,7 +60,8 @@ public class OdPairCoverageAnalysis implements MATSimAppCommand {
         }
 
         // go through od pairs and analyze the link coverage
-        try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.TDF).setHeader().setSkipHeaderRecord(true).
+        try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT).
+                setDelimiter(CsvUtils.detectDelimiter(odPairsPath.toString())).setHeader().setSkipHeaderRecord(true).
                 build().parse(Files.newBufferedReader(odPairsPath))) {
             for (CSVRecord record : parser.getRecords()) {
                 String fromNodeIdString = record.get(FROM_NODE);
