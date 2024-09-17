@@ -46,4 +46,4 @@ while ! nc -z localhost "${port}"; do
 done
 
 python -u -m matsim.scenariogen network-opt-freespeed --port "${port}" --output output-params-indv\
-  --ref-model individual --ref-size 33834 --learning-rate 1e-3 --batch-size 2048 --steps 1500
+  --ref-model individual --ref-size 33834 --learning-rate 1e-3 --batch-size 4096 --sample-unique --steps 1500
