@@ -1,7 +1,10 @@
 package org.matsim.accessibillityDrtOptimizer.network_calibration.od_pairs;
 
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.matsim.accessibillityDrtOptimizer.utils.CsvUtils;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -14,6 +17,8 @@ import org.matsim.core.utils.geometry.CoordUtils;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -25,6 +30,9 @@ import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkV
 public class CreateRandomOdPairs implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "path to network file", required = true)
     private String networkPath;
+
+    @CommandLine.Option(names = "--input", description = "path to output od-pairs file", defaultValue = "")
+    private String inputOdPairsPath;
 
     @CommandLine.Option(names = "--output", description = "path to output od-pairs file", required = true)
     private String outputPath;
@@ -54,11 +62,22 @@ public class CreateRandomOdPairs implements MATSimAppCommand {
                 .collect(Collectors.toList());
         int size = linkList.size();
         int generatedOdPairs = 0;
+        Set<Tuple<Id<Node>, Id<Node>>> existingOdPairs = new HashSet<>();
+        if (!inputOdPairsPath.isEmpty()){
+            // read in the existing od-pairs
+            try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT).
+                    setDelimiter(CsvUtils.detectDelimiter(inputOdPairsPath)).setHeader().setSkipHeaderRecord(true).
+                    build().parse(Files.newBufferedReader(Path.of(inputOdPairsPath)))) {
+                for (CSVRecord record : parser.getRecords()) {
+                    Id<Node> fromNodeId = Id.createNodeId(record.get(FROM_NODE));
+                    Id<Node> toNodeId = Id.createNodeId(record.get(TO_NODE));
+                    existingOdPairs.add(new Tuple<>(fromNodeId, toNodeId));
+                }
+            }
+        }
 
         CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath), CSVFormat.DEFAULT);
         tsvWriter.printRecord(FROM_NODE, TO_NODE, HOUR);
-        Set<Tuple<Id<Node>, Id<Node>>> existingOdPairs = new HashSet<>();
-
         while (generatedOdPairs < maxNumODPairs) {
             Node fromNode = linkList.get(random.nextInt(size)).getToNode();
             Node toNode = linkList.get(random.nextInt(size)).getToNode();
