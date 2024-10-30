@@ -104,7 +104,7 @@ public class NetworkCalibrator {
 
             int counter = 0;
             for (CSVRecord record : parser.getRecords()) {
-                if (counter > maxOdPairsUsed) {
+                if (counter >= maxOdPairsUsed) {
                     break;
                 }
                 String fromNodeIdString = record.get(FROM_NODE);
