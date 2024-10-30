@@ -90,21 +90,27 @@ public class NetworkCalibrator {
         this.departureTime = builder.departureTime;
     }
 
-    public void performCalibration(Path odPairsPath) throws IOException, InterruptedException {
-        readOdPairs(odPairsPath);
+    public void performCalibration(Path odPairsPath, int maxOdPairsUsed) throws IOException, InterruptedException {
+        readOdPairs(odPairsPath, maxOdPairsUsed);
         adjustNetworkAverageSpeed();
         calibrate();
     }
 
-    void readOdPairs(Path odPairsPath) throws IOException {
+    void readOdPairs(Path odPairsPath, int maxOdPairsUsed) throws IOException {
         try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT)
                 .setDelimiter(CsvUtils.detectDelimiter(odPairsPath.toString()))
                 .setHeader().setSkipHeaderRecord(true)
                 .build().parse(Files.newBufferedReader(odPairsPath))) {
+
+            int counter = 0;
             for (CSVRecord record : parser.getRecords()) {
+                if (counter >= maxOdPairsUsed) {
+                    break;
+                }
                 String fromNodeIdString = record.get(FROM_NODE);
                 String toNodeIdString = record.get(TO_NODE);
                 odPairs.add(new Tuple<>(Id.createNodeId(fromNodeIdString), Id.createNodeId(toNodeIdString)));
+                counter++;
             }
         }
     }

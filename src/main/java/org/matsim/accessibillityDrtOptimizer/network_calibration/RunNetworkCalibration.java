@@ -32,6 +32,10 @@ public class RunNetworkCalibration implements MATSimAppCommand {
     @CommandLine.Option(names = "--od-pairs", description = "Path to OD pair file (can also be the data base)", required = true)
     private Path odPairsPath;
 
+    @CommandLine.Option(names = "--max-od-pairs-used", description = "At most top x of od pairs from the od pair files are" +
+            " used for calibration", defaultValue = "100000")
+    private int maxOdPairsUsed;
+
     @CommandLine.Option(names = "--data-base", description = "Path to local data base (csv / tsv file)", required = true)
     private String dataBase;
 
@@ -62,7 +66,7 @@ public class RunNetworkCalibration implements MATSimAppCommand {
         NetworkCalibrator calibrator = new NetworkCalibrator.Builder(network, validator)
                 .setIterations(iterations).setCutOff(cutOff).setThreshold(threshold).setDepartureTime(departureTime)
                 .build();
-        calibrator.performCalibration(odPairsPath);
+        calibrator.performCalibration(odPairsPath, maxOdPairsUsed);
         Map<Integer, Double> scores = calibrator.getScores();
 
         // write calibrated network and score records
