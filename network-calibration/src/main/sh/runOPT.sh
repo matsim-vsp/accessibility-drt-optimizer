@@ -17,7 +17,9 @@ source venv/bin/activate
 module add java/21
 
 jar="network-calibration-SNAPSHOT.jar"
-input="input/*"
+
+# Start with --job-name=number data set size
+input="input/training-data-${SLURM_JOB_NAME}.csv"
 model="org.matsim.application.prepare.network.params.ref.GermanyNetworkParams"
 network="melbourne-from-sumo-network-reduced.xml.gz"
 ft="melbourne-from-sumo-network-ft.csv.gz"
@@ -31,7 +33,7 @@ do
 done
 
 command="java -cp ${jar} org.matsim.application.prepare.network.params.FreespeedOptServer ${input}
- --network ${network} --input-features ${ft} --model ${model} --port ${port} --ref-hours 1"
+ --network ${network} --input-features ${ft} --model ${model} --port ${port} --ref-hours 1 --factor-bounds -5,1"
 
 echo ""
 echo "command is $command"
@@ -45,4 +47,6 @@ while ! nc -z localhost "${port}"; do
   sleep 0.5
 done
 
-python -u -m matsim.scenariogen network-opt-freespeed --port "${port}" --ref-model germany --steps 1500
+python -u -m matsim.scenariogen network-opt-freespeed --port "${port}" --output output-${SLURM_JOB_NAME}\
+  --ref-model germany --steps 1500
+
