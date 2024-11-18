@@ -39,38 +39,20 @@ import java.util.List;
 import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.*;
 
 public class RunNetworkValidation implements MATSimAppCommand {
-    @CommandLine.Option(names = "--api", description = "path to network file", defaultValue = "GOOGLE_MAP")
-    private API api;
-
-    @CommandLine.Option(names = "--api-key", description = "API key", required = true)
-    private String apiKey;
-
     @CommandLine.Option(names = "--network", description = "path to network file", required = true)
     private String networkPath;
 
     @CommandLine.Option(names = "--od-pairs", description = "plans to be validated", required = true)
     private Path odPairsPath;
 
-    @CommandLine.Option(names = "--output", description = "output folder for the route calculation", required = true)
-    private String outputPath;
-
     @CommandLine.Option(names = "--data-base", description = "path to the data base", required = true)
     private String dataBase;
 
-    @CommandLine.Option(names = "--date", description = "The date to validate travel times for, format: YYYY-MM-DD")
-    private LocalDate date;
+    @CommandLine.Option(names = "--output", description = "output folder for the route calculation", required = true)
+    private String outputPath;
 
-    @CommandLine.Option(names = "--max-validation", description = "max number of validation to perform", defaultValue = "1000")
+    @CommandLine.Option(names = "--max-validation", description = "max number of validation to perform", defaultValue = "100000")
     private double maxValidations;
-
-    @CommandLine.Mixin
-    private CrsOptions crs = new CrsOptions();
-
-    enum API {
-        HERE, GOOGLE_MAP, NETWORK_FILE
-    }
-
-    private final String mode = "car";
 
     public static void main(String[] args) {
         new RunNetworkValidation().execute(args);
@@ -78,26 +60,6 @@ public class RunNetworkValidation implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
-        CoordinateTransformation ct = crs.getTransformation();
-        TravelTimeDistanceValidator validator;
-        MainModeIdentifier mainModeIdentifier = new DefaultAnalysisMainModeIdentifier();
-
-        if (api == API.GOOGLE_MAP) {
-            if (date == null) {
-                date = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.WEDNESDAY));
-            }
-            validator = new GoogleMapRouteValidator(outputPath, mode, apiKey, date.toString(), ct);
-
-        } else if (api == API.HERE) {
-            if (date == null) {
-                date = LocalDate.now().with(TemporalAdjusters.previous(DayOfWeek.WEDNESDAY));
-            }
-            validator = new HereMapsRouteValidator(outputPath, mode, apiKey, date.toString(), ct, false);
-
-        } else {
-            throw new RuntimeException("Wrong API used. Allowed values for --api are: GOOGLE_MAP, HERE. Do not use NETWORK_BASED validator in this analysis");
-        }
-
         Network network = NetworkUtils.readNetwork(networkPath);
         TravelTime travelTime = new QSimFreeSpeedTravelTime(1.0);
         LeastCostPathCalculator router = new SpeedyALTFactory().createPathCalculator(network, new TimeAsTravelDisutility(travelTime), travelTime);
@@ -106,11 +68,10 @@ public class RunNetworkValidation implements MATSimAppCommand {
         if (!Files.exists(Path.of(outputPath))){
             Files.createDirectories(Path.of(outputPath));
         }
-        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath + "/network-validation-" + api.toString() + ".tsv"), CSVFormat.TDF);
+        CSVPrinter tsvWriter = new CSVPrinter(new FileWriter(outputPath + "/network-validation-results.tsv"), CSVFormat.TDF);
         tsvWriter.printRecord("trip_id", "from_x", "from_y", "to_x", "to_y", "network_travel_time", "validated_travel_time", "network_travel_distance", "validated_travel_distance");
 
         int validated = 0;
-
         try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT)
                 .setDelimiter(CsvUtils.detectDelimiter(odPairsPath.toString())).setHeader().setSkipHeaderRecord(true)
                 .build().parse(Files.newBufferedReader(odPairsPath))) {
