@@ -4,6 +4,7 @@ import org.matsim.application.MATSimAppCommand;
 import picocli.CommandLine;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,6 +19,9 @@ public class ProcessOdPairsWithApiData implements MATSimAppCommand {
     @CommandLine.Option(names = "--output", description = "output folder of the processed data", required = true)
     private String output;
 
+    @CommandLine.Option(names = "--seed", description = "random seed for shuffling", defaultValue = "1")
+    private long seed;
+
     @CommandLine.Option(names = "--num-sub-od-pairs", description = "number of od pairs to keep", arity = "1..*",
             defaultValue = "19000")
     private List<Integer> numbersOfOdPairs;
@@ -28,7 +32,7 @@ public class ProcessOdPairsWithApiData implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
-        Random random = new Random(1);
+        Random random = new Random(seed);
         List<String> lines = Files.readAllLines(Paths.get(input));
         // Optional: if the first line is a header, remove it, save it, and add it back after shuffling.
         String header = lines.remove(0);
@@ -36,6 +40,10 @@ public class ProcessOdPairsWithApiData implements MATSimAppCommand {
         Collections.shuffle(lines, random);
         // Add header back if it was removed
         lines.add(0, header);
+
+        if (!Files.exists(Path.of(output))){
+            Files.createDirectories(Path.of(output));
+        }
 
         // write out top x OD pairs
         for (int numberOfOdPairs : numbersOfOdPairs) {

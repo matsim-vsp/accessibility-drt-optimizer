@@ -2,12 +2,13 @@ package org.matsim.accessibillityDrtOptimizer.optimizer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AccessibilityCalculator;
-import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeData;
+import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeCalculator;
+import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeTripData;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.drt.optimizer.DrtOptimizer;
 import org.matsim.contrib.drt.optimizer.DrtRequestInsertionRetryQueue;
+import org.matsim.contrib.drt.optimizer.constraints.DefaultDrtOptimizationConstraintsSet;
 import org.matsim.contrib.drt.optimizer.depot.DepotFinder;
 import org.matsim.contrib.drt.optimizer.depot.Depots;
 import org.matsim.contrib.drt.optimizer.insertion.UnplannedRequestInserter;
@@ -21,7 +22,6 @@ import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.contrib.dvrp.fleet.Fleet;
 import org.matsim.contrib.dvrp.optimizer.Request;
 import org.matsim.contrib.dvrp.passenger.PassengerRequestRejectedEvent;
-import org.matsim.contrib.dvrp.passenger.RequestQueue;
 import org.matsim.contrib.dvrp.path.VrpPaths;
 import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
 import org.matsim.contrib.dvrp.schedule.ScheduleTimingUpdater;
@@ -32,7 +32,9 @@ import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelTime;
 
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.stream.Stream;
 
 public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
@@ -50,12 +52,12 @@ public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
     private final UnplannedRequestInserter requestInserter;
     private final DrtRequestInsertionRetryQueue insertionRetryQueue;
 
-    private final AccessibilityCalculator accessibilityCalculator;
+    private final AlternativeModeCalculator accessibilityCalculator;
 
     private final TravelTime travelTime;
     private final LeastCostPathCalculator router;
 
-    private final RequestQueue<DrtRequest> unplannedRequests;
+    private final Queue<DrtRequest> unplannedRequests = new LinkedList<>();
 
     private final double baseThreshold;
 
@@ -66,7 +68,7 @@ public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
     public DefaultDrtOptimizerWithRejection(DrtConfigGroup drtCfg, Fleet fleet, MobsimTimer mobsimTimer, DepotFinder depotFinder,
                                             RebalancingStrategy rebalancingStrategy, DrtScheduleInquiry scheduleInquiry, ScheduleTimingUpdater scheduleTimingUpdater,
                                             EmptyVehicleRelocator relocator, UnplannedRequestInserter requestInserter, DrtRequestInsertionRetryQueue insertionRetryQueue,
-                                            AccessibilityCalculator accessibilityCalculator, Network network, TravelTime travelTime, double baseThreshold, EventsManager eventsManager,
+                                            AlternativeModeCalculator accessibilityCalculator, Network network, TravelTime travelTime, double baseThreshold, EventsManager eventsManager,
                                             TimeVaryingRejectionThreshold timeVaryingRejectionThreshold) {
         this.drtCfg = drtCfg;
         this.fleet = fleet;
@@ -83,7 +85,6 @@ public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
         this.router = new SpeedyALTFactory().createPathCalculator(network, new TimeAsTravelDisutility(travelTime), travelTime);
 
         rebalancingInterval = drtCfg.getRebalancingParams().map(rebalancingParams -> rebalancingParams.interval).orElse(null);
-        unplannedRequests = RequestQueue.withLimitedAdvanceRequestPlanningHorizon(drtCfg.advanceRequestPlanningHorizon);
         this.baseThreshold = baseThreshold;
         this.eventsManager = eventsManager;
         this.timeVaryingRejectionThreshold = timeVaryingRejectionThreshold;
@@ -91,16 +92,14 @@ public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
 
     @Override
     public void notifyMobsimBeforeSimStep(@SuppressWarnings("rawtypes") MobsimBeforeSimStepEvent e) {
-        unplannedRequests.updateQueuesOnNextTimeSteps(e.getSimulationTime());
-
         boolean scheduleTimingUpdated = false;
-        if (!unplannedRequests.getSchedulableRequests().isEmpty() || insertionRetryQueue.hasRequestsToRetryNow(e.getSimulationTime())) {
+        if (!unplannedRequests.isEmpty() || insertionRetryQueue.hasRequestsToRetryNow(e.getSimulationTime())) {
             for (DvrpVehicle v : fleet.getVehicles().values()) {
                 scheduleTimingUpdater.updateTimings(v);
             }
             scheduleTimingUpdated = true;
 
-            requestInserter.scheduleUnplannedRequests(unplannedRequests.getSchedulableRequests());
+            requestInserter.scheduleUnplannedRequests(unplannedRequests);
         }
 
         if (rebalancingInterval != null && e.getSimulationTime() % rebalancingInterval == 0) {
@@ -124,7 +123,7 @@ public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
             for (RebalancingStrategy.Relocation r : relocations) {
                 Link currentLink = ((DrtStayTask) r.vehicle.getSchedule().getCurrentTask()).getLink();
                 if (currentLink != r.link) {
-                    relocator.relocateVehicle(r.vehicle, r.link);
+                    relocator.relocateVehicle(r.vehicle, r.link, EmptyVehicleRelocator.RELOCATE_VEHICLE_TASK_TYPE);
                 }
             }
         }
@@ -134,18 +133,19 @@ public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
     public void requestSubmitted(Request request) {
         double now = mobsimTimer.getTimeOfDay();
         DrtRequest drtRequest = (DrtRequest) request;
-        AlternativeModeData alternativeModeData = accessibilityCalculator.calculateAlternativeMode(drtRequest);
+        AlternativeModeTripData alternativeModeData = accessibilityCalculator.calculateAlternativeTripData(drtRequest);
         double directTravelTime = VrpPaths.calcAndCreatePath(drtRequest.getFromLink(), drtRequest.getToLink(), now, router, travelTime).getTravelTime();
-        double maxTravelTime = drtCfg.maxTravelTimeAlpha * directTravelTime + drtCfg.maxTravelTimeBeta;
+        DefaultDrtOptimizationConstraintsSet constraints = (DefaultDrtOptimizationConstraintsSet) drtCfg.addOrGetDrtOptimizationConstraintsParams().addOrGetDefaultDrtOptimizationConstraintsSet();
+        double maxTravelTime = constraints.maxTravelTimeAlpha * directTravelTime + constraints.maxTravelTimeBeta;
         double threshold = timeVaryingRejectionThreshold.getThresholdFactor() * baseThreshold;
 
-        if (alternativeModeData.totalTravelTime() < maxTravelTime * threshold) {
+        if (alternativeModeData.actualTotalTravelTime() < maxTravelTime * threshold) {
             // Reject this request directly
             eventsManager.processEvent(new PassengerRequestRejectedEvent(mobsimTimer.getTimeOfDay(), drtCfg.mode, request.getId(),
-                    drtRequest.getPassengerId(), "Request is rejected because alternative mode is also attractive"));
-            log.info("DRT request" + drtRequest.getPassengerId().toString() + " is rejected, because a good alternative mode exists!");
+                    drtRequest.getPassengerIds(), "Request is rejected because alternative mode is also attractive"));
+            log.info("DRT request" + drtRequest.getPassengerIds().get(0).toString() + " is rejected, because a good alternative mode exists!");
         } else {
-            unplannedRequests.addRequest((DrtRequest) request);
+            unplannedRequests.add((DrtRequest)request);
         }
     }
 
@@ -158,7 +158,7 @@ public class DefaultDrtOptimizerWithRejection implements DrtOptimizer {
         if (drtCfg.idleVehiclesReturnToDepots && Depots.isSwitchingFromStopToStay(vehicle)) {
             Link depotLink = depotFinder.findDepot(vehicle);
             if (depotLink != null) {
-                relocator.relocateVehicle(vehicle, depotLink);
+                relocator.relocateVehicle(vehicle, depotLink, EmptyVehicleRelocator.RELOCATE_VEHICLE_TO_DEPOT_TASK_TYPE);
             }
         }
     }

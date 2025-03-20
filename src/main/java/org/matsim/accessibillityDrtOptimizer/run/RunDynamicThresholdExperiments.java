@@ -16,6 +16,8 @@ import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
 import org.matsim.contrib.drt.analysis.zonal.DrtModeZonalSystemModule;
 import org.matsim.contrib.drt.extension.preplanned.optimizer.WaitForStopTask;
+import org.matsim.contrib.drt.optimizer.constraints.DefaultDrtOptimizationConstraintsSet;
+import org.matsim.contrib.drt.optimizer.constraints.DrtOptimizationConstraintsSet;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.DrtControlerCreator;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
@@ -103,7 +105,8 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
                 double departureTime = Double.parseDouble(record.get(DEPARTURE_TIME));
                 double alternativeTravelTime = Double.parseDouble(record.get(ACTUAL_TOTAL_TRAVEL_TIME));
                 double directTravelTime = Double.parseDouble(record.get(DIRECT_CAR_TRAVEL_TIME));
-                double ratio = alternativeTravelTime / (tempDrtConfigGroup.maxTravelTimeAlpha * directTravelTime + tempDrtConfigGroup.maxTravelTimeBeta);
+                DefaultDrtOptimizationConstraintsSet constraints = (DefaultDrtOptimizationConstraintsSet) tempDrtConfigGroup.addOrGetDrtOptimizationConstraintsParams().addOrGetDefaultDrtOptimizationConstraintsSet();
+                double ratio = alternativeTravelTime / ( constraints.maxTravelTimeAlpha * directTravelTime + constraints.maxTravelTimeBeta);
                 alternativeModeData.put(personId, new Tuple<>(departureTime, ratio));
             }
         }
@@ -122,7 +125,7 @@ public class RunDynamicThresholdExperiments implements MATSimAppCommand {
                 String outputFolder = fleetSizeFolder + "/iter-" + i;
 
                 Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
-                config.controler().setOutputDirectory(outputFolder);
+                config.controller().setOutputDirectory(outputFolder);
                 config.plans().setInputFile("temporary-" + tempId + ".plans.xml.gz");
 
                 // Currently we only focus on single DRT mode

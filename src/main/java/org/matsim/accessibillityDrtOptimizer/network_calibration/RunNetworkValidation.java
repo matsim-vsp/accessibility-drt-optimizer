@@ -4,35 +4,26 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.accessibillityDrtOptimizer.utils.CsvUtils;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.application.MATSimAppCommand;
-import org.matsim.application.analysis.DefaultAnalysisMainModeIdentifier;
-import org.matsim.application.options.CrsOptions;
-import org.matsim.application.options.CsvOptions;
-import org.matsim.contrib.analysis.vsp.traveltimedistance.GoogleMapRouteValidator;
-import org.matsim.contrib.analysis.vsp.traveltimedistance.HereMapsRouteValidator;
-import org.matsim.contrib.analysis.vsp.traveltimedistance.TravelTimeDistanceValidator;
 import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.network.NetworkUtils;
-import org.matsim.core.router.MainModeIdentifier;
 import org.matsim.core.router.speedy.SpeedyALTFactory;
 import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.collections.Tuple;
-import org.matsim.core.utils.geometry.CoordinateTransformation;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.temporal.TemporalAdjusters;
 import java.util.Arrays;
 import java.util.List;
 
@@ -54,6 +45,8 @@ public class RunNetworkValidation implements MATSimAppCommand {
     @CommandLine.Option(names = "--max-validation", description = "max number of validation to perform", defaultValue = "100000")
     private double maxValidations;
 
+    private static final Logger log = LogManager.getLogger(RunNetworkValidation.class);
+
     public static void main(String[] args) {
         new RunNetworkValidation().execute(args);
     }
@@ -72,6 +65,8 @@ public class RunNetworkValidation implements MATSimAppCommand {
         tsvWriter.printRecord("trip_id", "from_x", "from_y", "to_x", "to_y", "network_travel_time", "validated_travel_time", "network_travel_distance", "validated_travel_distance");
 
         int validated = 0;
+        double sumAbsPctError = 0;
+        double sumSquaredError = 0;
         try (CSVParser parser = CSVFormat.Builder.create(CSVFormat.DEFAULT)
                 .setDelimiter(CsvUtils.detectDelimiter(odPairsPath.toString())).setHeader().setSkipHeaderRecord(true)
                 .build().parse(Files.newBufferedReader(odPairsPath))) {
@@ -97,6 +92,10 @@ public class RunNetworkValidation implements MATSimAppCommand {
                         Double.toString(validatedTimeAndDistance.getSecond())
                 );
 
+                double error = route.travelTime - validatedTimeAndDistance.getFirst();
+                sumAbsPctError += Math.abs(error / validatedTimeAndDistance.getFirst());
+                sumSquaredError += error * error;
+
                 tsvWriter.printRecord(outputRow);
                 validated++;
 
@@ -104,6 +103,10 @@ public class RunNetworkValidation implements MATSimAppCommand {
                     break;
                 }
             }
+        }
+        if (validated > 0){
+            log.info("Mean absolute percentage error = {}", 100 * sumAbsPctError / validated);
+            log.info("Root mean square error = {}", Math.sqrt(sumSquaredError / validated));
         }
 
         tsvWriter.close();

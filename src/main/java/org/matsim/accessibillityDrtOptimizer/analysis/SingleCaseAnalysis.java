@@ -9,16 +9,14 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.checkerframework.checker.units.qual.A;
+import org.geotools.api.feature.simple.SimpleFeature;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeCalculator;
-import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeData;
 import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeTripData;
-import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.DefaultAccessibilityCalculator;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
@@ -27,25 +25,19 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.application.ApplicationUtils;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.ShpOptions;
-import org.matsim.contrib.drt.analysis.zonal.DrtZonalSystem;
-import org.matsim.contrib.drt.analysis.zonal.DrtZone;
+import org.matsim.contrib.common.zones.Zone;
+import org.matsim.contrib.common.zones.ZoneSystem;
+import org.matsim.contrib.common.zones.systems.grid.square.SquareGridZoneSystem;
+import org.matsim.contrib.drt.optimizer.constraints.DefaultDrtOptimizationConstraintsSet;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
-import org.matsim.contrib.dvrp.path.VrpPaths;
-import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
 import org.matsim.contrib.dvrp.run.DvrpConfigGroup;
-import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.router.speedy.SpeedyALTFactory;
-import org.matsim.core.router.util.LeastCostPathCalculator;
-import org.matsim.core.router.util.TravelDisutility;
-import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
 import org.matsim.core.utils.gis.ShapeFileWriter;
 import org.matsim.pt.transitSchedule.api.TransitSchedule;
-import org.opengis.feature.simple.SimpleFeature;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
@@ -53,10 +45,9 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Predicate;
 
-import static org.matsim.contrib.drt.analysis.zonal.DrtGridUtils.createGridFromNetwork;
-import static org.matsim.contrib.drt.analysis.zonal.DrtGridUtils.createGridFromNetworkWithinServiceArea;
-import static org.matsim.contrib.drt.analysis.zonal.DrtZonalSystem.createFromPreparedGeometries;
+
 import static org.matsim.utils.gis.shp2matsim.ShpGeometryUtils.loadPreparedGeometries;
 
 public class SingleCaseAnalysis implements MATSimAppCommand {
@@ -90,7 +81,7 @@ public class SingleCaseAnalysis implements MATSimAppCommand {
         DrtConfigGroup drtConfigGroup = DrtConfigGroup.getSingleModeDrtConfig(config);
 
         if (directory.equals("")) {
-            directory = config.controler().getOutputDirectory();
+            directory = config.controller().getOutputDirectory();
         }
 
         SwissRailRaptorData data = SwissRailRaptorData.create(schedule, null, RaptorUtils.createStaticConfig(config), network, null);
@@ -103,18 +94,23 @@ public class SingleCaseAnalysis implements MATSimAppCommand {
         Path distanceStatsFile = ApplicationUtils.globFile(Path.of(directory), "*drt_vehicle_stats_drt.csv*");
 
         // Create Zonal system from Grid
-        List<PreparedGeometry> serviceAreas = null;
+        List<PreparedGeometry> serviceAreas;
         if (shp.isDefined()) {
-            URL url = shp.getShapeFile().toUri().toURL();
-            serviceAreas = (loadPreparedGeometries(url));
-        }
-        Map<String, PreparedGeometry> grid;
-        if (serviceAreas != null) {
-            grid = createGridFromNetworkWithinServiceArea(network, cellSize, serviceAreas);
+            URL url = new URL(shp.getShapeFile());
+            serviceAreas = loadPreparedGeometries(url);
         } else {
-            grid = createGridFromNetwork(network, cellSize);
+            serviceAreas = null;
         }
-        DrtZonalSystem zonalSystem = createFromPreparedGeometries(network, grid);
+
+        SquareGridZoneSystem zonalSystem;
+        if (serviceAreas != null) {
+            Predicate<Zone> zoneFilter = zone ->
+                    serviceAreas.stream()
+                            .anyMatch(serviceArea -> serviceArea.intersects(Objects.requireNonNull(zone.getPreparedGeometry()).getGeometry()));
+            zonalSystem = new SquareGridZoneSystem(network, cellSize, zoneFilter);
+        } else {
+            zonalSystem = new SquareGridZoneSystem(network, cellSize);
+        }
         Map<String, List<Double>> statsMap = new HashMap<>();
         Map<String, List<Double>> altModeStatsMap = new HashMap<>();
 
@@ -144,14 +140,11 @@ public class SingleCaseAnalysis implements MATSimAppCommand {
                 Link toLink = network.getLinks().get(Id.createLinkId(record.get("toLinkId")));
                 AlternativeModeTripData alternativeModeTripData = alternativeModeCalculator.calculateAlternativeTripData(record.get("personId"), fromLink, toLink, departureTime);
                 double directCarTravelTime = alternativeModeTripData.directCarTravelTime();
-                double travelTimeIndex = alternativeModeTripData.actualTotalTravelTime() / (drtConfigGroup.maxTravelTimeAlpha * directCarTravelTime + drtConfigGroup.maxTravelTimeBeta);
-                DrtZone zone = zonalSystem.getZoneForLinkId(fromLink.getId());
-                if (zone == null) {
-                    log.error("cannot find zone for link " + fromLink.getId().toString());
-                } else {
-                    statsMap.computeIfAbsent(zone.getId(), l -> new ArrayList<>()).add(travelTimeIndex);
-                    altModeStatsMap.computeIfAbsent(zone.getId(), l -> new ArrayList<>()).add(travelTimeIndex);
-                }
+                DefaultDrtOptimizationConstraintsSet constraints = (DefaultDrtOptimizationConstraintsSet) drtConfigGroup.addOrGetDrtOptimizationConstraintsParams().addOrGetDefaultDrtOptimizationConstraintsSet();
+                double travelTimeIndex = alternativeModeTripData.actualTotalTravelTime() / (constraints.maxTravelTimeAlpha * directCarTravelTime + constraints.maxTravelTimeBeta);
+                Zone zone = zonalSystem.getZoneForLinkId(fromLink.getId()).orElseThrow();
+                statsMap.computeIfAbsent(zone.getId().toString(), l -> new ArrayList<>()).add(travelTimeIndex);
+                altModeStatsMap.computeIfAbsent(zone.getId().toString(), l -> new ArrayList<>()).add(travelTimeIndex);
 
                 sumTotalTravelTime += alternativeModeTripData.actualTotalTravelTime();
                 totalWalkingDistance += alternativeModeTripData.totalWalkDistance();
@@ -183,16 +176,13 @@ public class SingleCaseAnalysis implements MATSimAppCommand {
                 Link toLink = network.getLinks().get(Id.createLinkId(record.get("toLinkId")));
                 AlternativeModeTripData alternativeModeTripData = alternativeModeCalculator.calculateAlternativeTripData(record.get("personId"), fromLink, toLink, departureTime);
                 double directCarTravelTime = alternativeModeTripData.directCarTravelTime();
-                double travelTimeIndex = journeyTime / (drtConfigGroup.maxTravelTimeAlpha * directCarTravelTime + drtConfigGroup.maxTravelTimeBeta);
+                DefaultDrtOptimizationConstraintsSet constraints = (DefaultDrtOptimizationConstraintsSet) drtConfigGroup.addOrGetDrtOptimizationConstraintsParams().addOrGetDefaultDrtOptimizationConstraintsSet();
+                double travelTimeIndex = journeyTime / (constraints.maxTravelTimeAlpha * directCarTravelTime + constraints.maxTravelTimeBeta);
 
-                DrtZone zone = zonalSystem.getZoneForLinkId(fromLink.getId());
-                if (zone == null) {
-                    log.error("cannot find zone for link " + fromLink.getId().toString());
-                } else {
-                    statsMap.computeIfAbsent(zone.getId(), l -> new ArrayList<>()).add(travelTimeIndex);
-                    altModeStatsMap.computeIfAbsent(zone.getId(), l -> new ArrayList<>()).add(travelTimeIndex * alternativeModeTripData.actualTotalTravelTime() / journeyTime);
-                }
-//                statsMap.computeIfAbsent(Objects.requireNonNull(zonalSystem.getZoneForLinkId(fromLink.getId())).getId(), l -> new ArrayList<>()).add(delay);
+                Zone zone = zonalSystem.getZoneForLinkId(fromLink.getId()).orElseThrow();
+                statsMap.computeIfAbsent(zone.getId().toString(), l -> new ArrayList<>()).add(travelTimeIndex);
+                altModeStatsMap.computeIfAbsent(zone.getId().toString(), l -> new ArrayList<>()).add(travelTimeIndex * alternativeModeTripData.actualTotalTravelTime() / journeyTime);
+                //                statsMap.computeIfAbsent(Objects.requireNonNull(zonalSystem.getZoneForLinkId(fromLink.getId())).getId(), l -> new ArrayList<>()).add(delay);
 
                 sumTotalTravelTime += journeyTime;
                 totalRevenueDistance += Double.parseDouble(record.get("directTravelDistance_m"));
@@ -245,7 +235,7 @@ public class SingleCaseAnalysis implements MATSimAppCommand {
     }
 
 
-    private Collection<SimpleFeature> convertGeometriesToSimpleFeatures(String targetCoordinateSystem, DrtZonalSystem zones,
+    private Collection<SimpleFeature> convertGeometriesToSimpleFeatures(String targetCoordinateSystem, ZoneSystem zones,
                                                                         Map<String, List<Double>> statsMap,
                                                                         Map<String, List<Double>> altModeStatsMap) {
         SimpleFeatureTypeBuilder simpleFeatureBuilder = new SimpleFeatureTypeBuilder();
@@ -271,21 +261,21 @@ public class SingleCaseAnalysis implements MATSimAppCommand {
         Collection<SimpleFeature> features = new ArrayList<>();
 
         int counter = 0;
-        for (DrtZone zone : zones.getZones().values()) {
+        for (Zone zone : zones.getZones().values()) {
             Object[] featureAttributes = new Object[7];
             Geometry geometry = zone.getPreparedGeometry() != null ? zone.getPreparedGeometry().getGeometry() : null;
             featureAttributes[0] = geometry;
             featureAttributes[1] = zone.getId();
             featureAttributes[2] = zone.getCentroid().getX();
             featureAttributes[3] = zone.getCentroid().getY();
-            List<Double> delays = statsMap.getOrDefault(zone.getId(), new ArrayList<>());
+            List<Double> delays = statsMap.getOrDefault(zone.getId().toString(), new ArrayList<>());
             featureAttributes[4] = delays.size();
             featureAttributes[5] = delays.stream().mapToDouble(v -> v).average().orElse(0);
-            featureAttributes[6] = altModeStatsMap.getOrDefault(zone.getId(), new ArrayList<>()).stream().mapToDouble(v -> v).average().orElse(0);
+            featureAttributes[6] = altModeStatsMap.getOrDefault(zone.getId().toString(), new ArrayList<>()).stream().mapToDouble(v -> v).average().orElse(0);
             counter += delays.size();
 
             try {
-                features.add(builder.buildFeature(zone.getId(), featureAttributes));
+                features.add(builder.buildFeature(zone.getId().toString(), featureAttributes));
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
             }

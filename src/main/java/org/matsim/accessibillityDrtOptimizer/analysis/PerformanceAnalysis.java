@@ -4,6 +4,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.matsim.contrib.drt.optimizer.constraints.DefaultDrtOptimizationConstraintsSet;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 
 import java.io.FileWriter;
@@ -91,7 +92,8 @@ public class PerformanceAnalysis {
         int satisfactoryTrips = 0;
         for (String personId : systemTotalTravelTimeMap.keySet()) {
             double directTravelTime = tripDirectTravelTimeMap.get(personId);
-            double maxTravelTime = drtConfigGroup.maxTravelTimeAlpha * directTravelTime + drtConfigGroup.maxTravelTimeBeta;
+            DefaultDrtOptimizationConstraintsSet constraints = (DefaultDrtOptimizationConstraintsSet) drtConfigGroup.addOrGetDrtOptimizationConstraintsParams().addOrGetDefaultDrtOptimizationConstraintsSet();
+            double maxTravelTime = constraints.maxTravelTimeAlpha * directTravelTime + constraints.maxTravelTimeBeta;
             double actualTravelTime = systemTotalTravelTimeMap.get(personId);
             if (actualTravelTime <= maxTravelTime) {
                 satisfactoryTrips++;
