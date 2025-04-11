@@ -1,4 +1,4 @@
-package org.matsim.accessibillityDrtOptimizer.network_calibration;
+package network_calibration;
 
 import org.matsim.application.MATSimAppCommand;
 import picocli.CommandLine;

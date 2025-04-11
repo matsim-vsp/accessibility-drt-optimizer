@@ -1,4 +1,4 @@
-package org.matsim.accessibillityDrtOptimizer.network_calibration;
+package network_calibration;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -6,7 +6,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.matsim.accessibillityDrtOptimizer.utils.CsvUtils;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -20,14 +19,13 @@ import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.collections.Tuple;
 import picocli.CommandLine;
+import utils.CsvUtils;
 
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.*;
 
 public class RunNetworkValidation implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "path to network file", required = true)
@@ -71,11 +69,11 @@ public class RunNetworkValidation implements MATSimAppCommand {
                 .setDelimiter(CsvUtils.detectDelimiter(odPairsPath.toString())).setHeader().setSkipHeaderRecord(true)
                 .build().parse(Files.newBufferedReader(odPairsPath))) {
             for (CSVRecord record : parser.getRecords()) {
-                String fromNodeIdString = record.get(FROM_NODE);
-                String toNodeIdString = record.get(TO_NODE);
+                String fromNodeIdString = record.get(NetworkValidatorBasedOnLocalData.FROM_NODE);
+                String toNodeIdString = record.get(NetworkValidatorBasedOnLocalData.TO_NODE);
                 Node fromNode = network.getNodes().get(Id.createNodeId(fromNodeIdString));
                 Node toNode = network.getNodes().get(Id.createNodeId(toNodeIdString));
-                double departureTime = Double.parseDouble(record.get(HOUR));
+                double departureTime = Double.parseDouble(record.get(NetworkValidatorBasedOnLocalData.HOUR));
                 LeastCostPathCalculator.Path route = router.calcLeastCostPath(fromNode, toNode, departureTime, null, null);
                 double networkDistance = route.links.stream().mapToDouble(Link::getLength).sum();
 

@@ -1,4 +1,4 @@
-package org.matsim.accessibillityDrtOptimizer.network_calibration;
+package network_calibration;
 
 import org.matsim.api.core.v01.network.Link;
 

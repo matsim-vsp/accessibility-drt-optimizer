@@ -1,4 +1,4 @@
-package org.matsim.accessibillityDrtOptimizer.network_calibration.od_pairs;
+package od_pairs;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -22,7 +22,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.*;
+import static network_calibration.NetworkValidatorBasedOnLocalData.FROM_NODE;
+import static network_calibration.NetworkValidatorBasedOnLocalData.TO_NODE;
+import static network_calibration.NetworkValidatorBasedOnLocalData.HOUR;
 
 public class CreateOdPairsFromPlans implements MATSimAppCommand {
     @CommandLine.Option(names = "--plans", description = "plans to be validated", required = true)

@@ -1,4 +1,4 @@
-package org.matsim.accessibillityDrtOptimizer.network_calibration;
+package network_calibration;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -6,7 +6,6 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.matsim.accessibillityDrtOptimizer.utils.CsvUtils;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -19,14 +18,12 @@ import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.utils.collections.Tuple;
+import utils.CsvUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.FROM_NODE;
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.TO_NODE;
 
 public class NetworkCalibrator {
     private final Network network;
@@ -107,8 +104,8 @@ public class NetworkCalibrator {
                 if (counter >= maxOdPairsUsed) {
                     break;
                 }
-                String fromNodeIdString = record.get(FROM_NODE);
-                String toNodeIdString = record.get(TO_NODE);
+                String fromNodeIdString = record.get(NetworkValidatorBasedOnLocalData.FROM_NODE);
+                String toNodeIdString = record.get(NetworkValidatorBasedOnLocalData.TO_NODE);
                 odPairs.add(new Tuple<>(Id.createNodeId(fromNodeIdString), Id.createNodeId(toNodeIdString)));
                 counter++;
             }
