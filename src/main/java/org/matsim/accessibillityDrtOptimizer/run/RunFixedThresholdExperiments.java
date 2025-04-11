@@ -51,7 +51,7 @@ public class RunFixedThresholdExperiments implements MATSimAppCommand {
         for (int fleetSize = fleetFrom; fleetSize <= fleetMax; fleetSize += fleetInterval) {
             Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
             MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
-            config.controler().setOutputDirectory(outputDirectory + "/" + fleetSize + "-veh");
+            config.controller().setOutputDirectory(outputDirectory + "/" + fleetSize + "-veh");
             config.plans().setInputFile("plans/threshold-" + threshold + ".plans.xml.gz");
 
             for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {

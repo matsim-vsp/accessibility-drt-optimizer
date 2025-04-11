@@ -1,11 +1,10 @@
-package org.matsim.accessibillityDrtOptimizer.network_calibration.od_pairs;
+package od_pairs;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang.mutable.MutableInt;
-import org.matsim.accessibillityDrtOptimizer.utils.CsvUtils;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -21,6 +20,7 @@ import org.matsim.core.router.util.LeastCostPathCalculator;
 import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import picocli.CommandLine;
+import utils.CsvUtils;
 
 import java.io.FileWriter;
 import java.nio.file.Files;
@@ -28,7 +28,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.*;
+import static network_calibration.NetworkValidatorBasedOnLocalData.*;
 
 public class OdPairCoverageAnalysis implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "path to network file", required = true)

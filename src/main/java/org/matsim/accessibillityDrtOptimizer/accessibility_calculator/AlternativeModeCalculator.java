@@ -46,7 +46,7 @@ public class AlternativeModeCalculator {
     }
 
     public AlternativeModeTripData calculateAlternativeTripData(DrtRequest drtRequest) {
-        return calculateAlternativeTripData(drtRequest.getPassengerId().toString(), drtRequest.getFromLink(),
+        return calculateAlternativeTripData(drtRequest.getPassengerIds().get(0).toString(), drtRequest.getFromLink(),
                 drtRequest.getToLink(), drtRequest.getEarliestStartTime());
     }
 

@@ -1,7 +1,6 @@
 package org.matsim.accessibillityDrtOptimizer.run;
 
 import org.matsim.accessibillityDrtOptimizer.run.modules.AccessibilityModule;
-import org.matsim.accessibillityDrtOptimizer.run.modules.LinearStopDurationModule;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.contrib.drt.analysis.afterSimAnalysis.DrtVehicleStoppingTaskWriter;
 import org.matsim.contrib.drt.analysis.zonal.DrtModeZonalSystemModule;
@@ -46,7 +45,7 @@ public class RunSimpleRejectionOptimizer implements MATSimAppCommand {
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
         config.transit().setUseTransit(true);
         MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
-        config.controler().setOutputDirectory(outputDirectory);
+        config.controller().setOutputDirectory(outputDirectory);
 
         Controler controler = DrtControlerCreator.createControler(config, false);
         controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModule()));
@@ -54,7 +53,7 @@ public class RunSimpleRejectionOptimizer implements MATSimAppCommand {
         // Add mode module
         for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
             controler.addOverridingModule(new DvrpModule(new DrtModeZonalSystemModule(drtCfg)));
-            controler.addOverridingModule(new LinearStopDurationModule(drtCfg));
+//            controler.addOverridingModule(new LinearStopDurationModule(drtCfg));
             controler.addOverridingQSimModule(new AccessibilityModule(drtCfg, threshold, timeVarying));
         }
         controler.run();

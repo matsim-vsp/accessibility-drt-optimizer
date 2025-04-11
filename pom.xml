@@ -11,7 +11,7 @@
 
 	<properties>
 		<maven.compiler.release>17</maven.compiler.release>
-		<matsim.version>15.0-PR2223</matsim.version>
+		<matsim.version>2025.0-PR3786</matsim.version>
 <!--		<matsim.version>15.0-SNAPSHOT</matsim.version>-->
 		<jsprit.version>1.8</jsprit.version>
 	</properties>
@@ -64,6 +64,16 @@
 		<dependency>
 			<groupId>org.matsim.contrib</groupId>
 			<artifactId>osm</artifactId>
+			<version>${matsim.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.matsim.contrib</groupId>
+			<artifactId>common</artifactId>
+			<version>${matsim.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.matsim.contrib</groupId>
+			<artifactId>bicycle</artifactId>
 			<version>${matsim.version}</version>
 		</dependency>
 
@@ -163,8 +173,8 @@
 								<transformer
 										implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<manifestEntries>
-										<Main-Class>org.matsim.project.drtSchoolTransportStudy.jsprit.RunJspritScenario
-                                        </Main-Class>
+										<network_calibration.Main-Class>org.matsim.project.drtSchoolTransportStudy.jsprit.RunJspritScenario
+                                        </network_calibration.Main-Class>
 										<Specification-Vendor>org.matsim</Specification-Vendor>
 										<Implementation-Vendor>org.matsim</Implementation-Vendor>
 										<Implementation-Version>${project.version}</Implementation-Version>

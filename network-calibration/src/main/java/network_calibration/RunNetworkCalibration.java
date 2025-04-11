@@ -1,25 +1,17 @@
-package org.matsim.accessibillityDrtOptimizer.network_calibration;
+package network_calibration;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
-import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.NetworkWriter;
 import org.matsim.application.MATSimAppCommand;
 import org.matsim.application.options.CrsOptions;
-import org.matsim.contrib.analysis.vsp.traveltimedistance.GoogleMapRouteValidator;
 import org.matsim.core.network.NetworkUtils;
 import picocli.CommandLine;
-import scala.Int;
 
 import java.io.FileWriter;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.temporal.TemporalAdjusters;
-import java.util.List;
 import java.util.Map;
 
 public class RunNetworkCalibration implements MATSimAppCommand {

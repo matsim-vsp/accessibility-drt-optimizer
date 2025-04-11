@@ -33,6 +33,7 @@ import org.matsim.contrib.dvrp.fleet.DvrpVehicle;
 import org.matsim.contrib.dvrp.fleet.DvrpVehicleSpecification;
 import org.matsim.contrib.dvrp.fleet.FleetWriter;
 import org.matsim.contrib.dvrp.fleet.ImmutableDvrpVehicleSpecification;
+import org.matsim.contrib.dvrp.load.IntegerLoadType;
 import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.utils.geometry.geotools.MGC;
@@ -144,7 +145,8 @@ public class CreateFleetVehicles implements MATSimAppCommand {
                         serviceEndTime(endTime).build();
                 vehicleSpecifications.add(vehicleSpecification);
             }
-            new FleetWriter(vehicleSpecifications.stream()).write(outputFolder.toString() + "/" + fleetSize + "-" + capacity + "_seater-" + operator + "-vehicles.xml");
+            new FleetWriter(vehicleSpecifications.stream(), new IntegerLoadType("passengers"))
+                    .write(outputFolder.toString() + "/" + fleetSize + "-" + capacity + "_seater-" + operator + "-vehicles.xml");
         }
         return 0;
     }

@@ -15,6 +15,7 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.Population;
 import org.matsim.application.MATSimAppCommand;
+import org.matsim.contrib.drt.optimizer.constraints.DefaultDrtOptimizationConstraintsSet;
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
@@ -84,8 +85,8 @@ public class PlanFilter implements MATSimAppCommand {
             double departureTime = trip.getOriginActivity().getEndTime().orElseThrow(RuntimeException::new);
 
             AlternativeModeTripData alternativeModeTripData = alternativeModeCalculator.calculateAlternativeTripData(person.getId().toString(), fromLink, toLink, departureTime);
-
-            double upperBound = drtConfigGroup.maxTravelTimeAlpha * alternativeModeTripData.directCarTravelTime() + drtConfigGroup.maxTravelTimeBeta;
+            DefaultDrtOptimizationConstraintsSet constraints = (DefaultDrtOptimizationConstraintsSet) drtConfigGroup.addOrGetDrtOptimizationConstraintsParams().addOrGetDefaultDrtOptimizationConstraintsSet();
+            double upperBound = constraints.maxTravelTimeAlpha * alternativeModeTripData.directCarTravelTime() + constraints.maxTravelTimeBeta;
             double alternativeTravelTime = alternativeModeTripData.actualTotalTravelTime();
             if (alternativeTravelTime > 0.2 * upperBound) {
                 personList02.add(person);

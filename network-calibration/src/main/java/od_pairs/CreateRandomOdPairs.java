@@ -1,10 +1,9 @@
-package org.matsim.accessibillityDrtOptimizer.network_calibration.od_pairs;
+package od_pairs;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.matsim.accessibillityDrtOptimizer.utils.CsvUtils;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -15,6 +14,7 @@ import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.utils.collections.Tuple;
 import org.matsim.core.utils.geometry.CoordUtils;
 import picocli.CommandLine;
+import utils.CsvUtils;
 
 import java.io.FileWriter;
 import java.nio.file.Files;
@@ -25,7 +25,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.matsim.accessibillityDrtOptimizer.network_calibration.NetworkValidatorBasedOnLocalData.*;
+import static network_calibration.NetworkValidatorBasedOnLocalData.*;
 
 public class CreateRandomOdPairs implements MATSimAppCommand {
     @CommandLine.Option(names = "--network", description = "path to network file", required = true)

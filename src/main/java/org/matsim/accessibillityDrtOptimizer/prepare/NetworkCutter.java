@@ -64,7 +64,7 @@ public class NetworkCutter implements MATSimAppCommand {
 
         if (keepPT) {
             MultimodalNetworkCleaner networkCleaner = new MultimodalNetworkCleaner(network);
-            networkCleaner.run(Set.of(TransportMode.car));
+            networkCleaner.run(Set.of(TransportMode.car, TransportMode.ride, TransportMode.bike, "freight", "truck"));
         } else {
             NetworkCleaner networkCleaner = new NetworkCleaner();
             networkCleaner.run(network);
