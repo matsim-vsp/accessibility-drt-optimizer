@@ -23,7 +23,6 @@ import java.util.List;
 
 public class AlternativeModeCalculator {
     private final SwissRailRaptor raptor;
-    private final Network network;
     private final TravelTime travelTime;
     private final TravelDisutility travelDisutility;
     private final LeastCostPathCalculator router;
@@ -31,7 +30,6 @@ public class AlternativeModeCalculator {
 
     public AlternativeModeCalculator(SwissRailRaptor raptor, Network network, TravelTime travelTime, TravelDisutility travelDisutility) {
         this.raptor = raptor;
-        this.network = network;
         this.travelTime = travelTime;
         this.travelDisutility = travelDisutility;
         this.router = new SpeedyALTFactory().createPathCalculator(network, travelDisutility, travelTime);
@@ -39,7 +37,6 @@ public class AlternativeModeCalculator {
 
     public AlternativeModeCalculator(SwissRailRaptor raptor, Network network) {
         this.raptor = raptor;
-        this.network = network;
         this.travelTime = new QSimFreeSpeedTravelTime(1);
         this.travelDisutility = new TimeAsTravelDisutility(travelTime);
         this.router = new SpeedyALTFactory().createPathCalculator(network, travelDisutility, travelTime);
@@ -79,14 +76,17 @@ public class AlternativeModeCalculator {
             mode = TransportMode.walk;
         } else {
             // A suitable PT route is found (usually it is walk-pt-walk, walk-pt-pt-walk, walk-pt-walk-pt-walk, ...)
+            double arrivalTime = Double.NaN;
             for (PlanElement planElement : legs) {
                 Leg leg = (Leg) planElement;
                 if (leg.getMode().equals(TransportMode.walk)) {
                     totalWalkDistance += leg.getRoute().getDistance();
                 }
-                actualTotalTravelTime += leg.getTravelTime().seconds();
+                arrivalTime = leg.getDepartureTime().seconds() + leg.getTravelTime().seconds();
+//                actualTotalTravelTime += leg.getTravelTime().seconds();
             }
             mode = TransportMode.pt;
+            actualTotalTravelTime = arrivalTime - departureTime;
         }
 
         return new AlternativeModeTripData(tripId, departureTime, fromCoord, toCoord, directCarTravelTime, actualTotalTravelTime, mode, totalWalkDistance);

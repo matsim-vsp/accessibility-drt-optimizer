@@ -3,6 +3,7 @@ package org.matsim.accessibillityDrtOptimizer.optimizer;
 import org.matsim.contrib.drt.scheduler.DrtScheduleInquiry;
 import org.matsim.contrib.dvrp.fleet.Fleet;
 
+@Deprecated
 public class TimeVaryingRejectionThreshold {
     private final Fleet fleet;
     private final DrtScheduleInquiry scheduleInquiry;

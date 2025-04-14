@@ -8,7 +8,6 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeCalculator;
 import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.AlternativeModeTripData;
-import org.matsim.accessibillityDrtOptimizer.accessibility_calculator.DefaultAccessibilityCalculator;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -22,6 +21,7 @@ import org.matsim.contrib.dvrp.router.TimeAsTravelDisutility;
 import org.matsim.contrib.dvrp.trafficmonitoring.QSimFreeSpeedTravelTime;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.population.io.PopulationWriter;
 import org.matsim.core.router.TripStructureUtils;
@@ -29,9 +29,12 @@ import org.matsim.core.router.util.TravelDisutility;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.pt.transitSchedule.api.TransitSchedule;
+import org.matsim.vehicles.Vehicles;
 import picocli.CommandLine;
 
 import java.io.FileWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,15 +51,20 @@ public class PlanFilter implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
+        if (!Files.exists(Path.of(outputDirectory))){
+            Files.createDirectories(Path.of(outputDirectory));
+        }
+
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup());
+        config.global().setCoordinateSystem("EPSG:25832");
         Scenario scenario = ScenarioUtils.loadScenario(config);
         TransitSchedule schedule = scenario.getTransitSchedule();
+        Vehicles vehicles= scenario.getTransitVehicles();
         Network network = scenario.getNetwork();
         Population inputPlans = scenario.getPopulation();
 
-        SwissRailRaptorData data = SwissRailRaptorData.create(schedule, null, RaptorUtils.createStaticConfig(config), network, null);
+        SwissRailRaptorData data = SwissRailRaptorData.create(schedule, vehicles, RaptorUtils.createStaticConfig(config), network, null);
         SwissRailRaptor raptor = new SwissRailRaptor.Builder(data, config).build();
-        DefaultAccessibilityCalculator accessibilityCalculator = new DefaultAccessibilityCalculator(raptor);
 
         MultiModeDrtConfigGroup multiModeDrtConfigGroup = MultiModeDrtConfigGroup.get(config);
         Preconditions.checkArgument(multiModeDrtConfigGroup.getModalElements().size() == 1, "Only one DRT is currently supported. Check config file");
@@ -81,7 +89,13 @@ public class PlanFilter implements MATSimAppCommand {
             Preconditions.checkArgument(trips.size() == 1, "Only trip based plan are supported. Check the input plans!");
             TripStructureUtils.Trip trip = trips.get(0);
             Link fromLink = network.getLinks().get(trip.getOriginActivity().getLinkId());
+            if (fromLink == null) {
+                fromLink = NetworkUtils.getNearestLink(network, trip.getOriginActivity().getCoord());
+            }
             Link toLink = network.getLinks().get(trip.getDestinationActivity().getLinkId());
+            if (toLink == null) {
+                toLink = NetworkUtils.getNearestLink(network, trip.getDestinationActivity().getCoord());
+            }
             double departureTime = trip.getOriginActivity().getEndTime().orElseThrow(RuntimeException::new);
 
             AlternativeModeTripData alternativeModeTripData = alternativeModeCalculator.calculateAlternativeTripData(person.getId().toString(), fromLink, toLink, departureTime);
