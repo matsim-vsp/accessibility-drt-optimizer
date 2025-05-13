@@ -34,17 +34,13 @@ public class RunDefaultOnlineStrategy implements MATSimAppCommand {
 
     @Override
     public Integer call() throws Exception {
-        // Record the starting time
-        long startTime = System.currentTimeMillis();
-
         Config config = ConfigUtils.loadConfig(configPath, new MultiModeDrtConfigGroup(), new DvrpConfigGroup());
         MultiModeDrtConfigGroup multiModeDrtConfig = MultiModeDrtConfigGroup.get(config);
         config.controller().setOutputDirectory(outputDirectory);
 
         Controler controler = DrtControlerCreator.createControler(config, false);
-        controler.addOverridingModule(new DvrpModule(new DvrpBenchmarkTravelTimeModule()));
 
-        // Add mode module
+        // Add custom module
         for (DrtConfigGroup drtCfg : multiModeDrtConfig.getModalElements()) {
             controler.addOverridingModule(new DvrpModule(new DrtModeZonalSystemModule(drtCfg)));
         }

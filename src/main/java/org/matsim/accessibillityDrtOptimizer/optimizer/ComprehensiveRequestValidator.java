@@ -7,6 +7,7 @@ import org.matsim.contrib.drt.optimizer.constraints.DefaultDrtOptimizationConstr
 import org.matsim.contrib.drt.run.DrtConfigGroup;
 import org.matsim.contrib.dvrp.passenger.PassengerRequest;
 import org.matsim.contrib.dvrp.passenger.PassengerRequestValidator;
+import org.matsim.core.utils.collections.Tuple;
 
 import java.util.Collections;
 import java.util.Map;
@@ -19,15 +20,15 @@ public class ComprehensiveRequestValidator implements PassengerRequestValidator 
     private final Population population;
     private final Map<Integer, Double> thresholdMap;
     private final double timeBinSize;
-    private final Map<String, AlternativeModeTripData> alternativeModeTripDataMap;
+    private final Map<String, Tuple<Double, Double>> alternativeModeTripData;
     private final DrtConfigGroup drtConfigGroup;
 
     public ComprehensiveRequestValidator(Population population, Map<Integer, Double> thresholdMap, double timeBinSize,
-                                         Map<String, AlternativeModeTripData> alternativeModeTripDataMap, DrtConfigGroup drtConfigGroup) {
+                                         Map<String, Tuple<Double, Double>> alternativeModeTripData, DrtConfigGroup drtConfigGroup) {
         this.population = population;
         this.thresholdMap = thresholdMap;
         this.timeBinSize = timeBinSize;
-        this.alternativeModeTripDataMap = alternativeModeTripDataMap;
+        this.alternativeModeTripData = alternativeModeTripData;
         this.drtConfigGroup = drtConfigGroup;
     }
 
@@ -46,14 +47,9 @@ public class ComprehensiveRequestValidator implements PassengerRequestValidator 
         }
 
         // otherwise, we determine if a request is valid based on its alternative modes
-        DefaultDrtOptimizationConstraintsSet defaultConstraintsSet =
-                (DefaultDrtOptimizationConstraintsSet) drtConfigGroup.addOrGetDrtOptimizationConstraintsParams()
-                        .addOrGetDefaultDrtOptimizationConstraintsSet();
-        AlternativeModeTripData alternativeData = alternativeModeTripDataMap.get(person.getId().toString());
-        double maxDrtTravelTime = defaultConstraintsSet.maxTravelTimeAlpha * alternativeData.directCarTravelTime() + defaultConstraintsSet.maxTravelTimeBeta;
+        double travelTimeRatioOfAlternativeMode = alternativeModeTripData.get(person.getId().toString()).getSecond();
         double threshold = thresholdMap.get((int) Math.floor(request.getEarliestStartTime() / timeBinSize));
-        double alternativeModeTotalTravelTime = alternativeData.actualTotalTravelTime();
-        if (alternativeModeTotalTravelTime < maxDrtTravelTime * threshold) {
+        if (travelTimeRatioOfAlternativeMode <  threshold) {
             return Set.of(USE_ALTERNATIVE_MODE);
         }
         return Set.of();

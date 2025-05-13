@@ -8,6 +8,8 @@ import org.matsim.core.population.PopulationUtils;
 
 import java.util.Random;
 
+import static org.matsim.accessibillityDrtOptimizer.run.demand_generation.RequestTypes.*;
+
 /**
  * Tag person with has a disability and passengers who are willing to pay extra for the premium service
  */
@@ -17,13 +19,13 @@ public class ProcessDrtPersons {
         Random rand = new Random(1);
         for (Person drtPerson : drtPlans.getPersons().values()) {
             if (PersonUtils.getAge(drtPerson) > 67) {
-                drtPerson.getAttributes().putAttribute("remark", "old");
+                drtPerson.getAttributes().putAttribute(ATTRIBUTE_NAME_REMARK, OLD);
             } else if (rand.nextDouble() < 0.1) {
-                drtPerson.getAttributes().putAttribute("remark", "disabled");
+                drtPerson.getAttributes().putAttribute(ATTRIBUTE_NAME_REMARK, DISABLED);
             } else if (rand.nextDouble() < 0.2) {
-                drtPerson.getAttributes().putAttribute("remark", "premium");
+                drtPerson.getAttributes().putAttribute(ATTRIBUTE_NAME_REMARK, PREMIUM);
             } else {
-                drtPerson.getAttributes().putAttribute("remark", "normal");
+                drtPerson.getAttributes().putAttribute(ATTRIBUTE_NAME_REMARK, NORMAL);
             }
         }
         new PopulationWriter(drtPlans).write("output");
